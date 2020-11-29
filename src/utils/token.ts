@@ -9,7 +9,7 @@ interface Payload {
 
 export function encodeToken(username: string) {
     const payload : Payload = {
-        exp: moment().add(10, 'days').unix(),
+        exp: moment().add(4, 'months').unix(),
         iat: moment().unix(),
         sub: username
     }
