@@ -1,8 +1,8 @@
 import { Repository, WithId } from "@peregrine/mongo-connect"
-import { User } from "../domain/User"
 import bcrypt from "bcrypt"
+import { LinkedCredentials } from "../domain/Credentials"
 
-export async function getUser(users: Repository<User, null>, email: string, password: string): Promise<WithId<User>> {
+export async function getUser(users: Repository<LinkedCredentials, null>, email: string, password: string): Promise<WithId<LinkedCredentials>> {
     const usersList = (await users.getAll()) ?? []
     const user = usersList.find(it => it.email === email) ?? null
 

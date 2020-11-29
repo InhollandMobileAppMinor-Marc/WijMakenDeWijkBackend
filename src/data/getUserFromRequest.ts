@@ -2,10 +2,10 @@ import { Repository, WithId } from "@peregrine/mongo-connect"
 import { Request } from "koa"
 import { isString } from "../utils/checkType"
 import { decodeToken } from "../utils/token"
-import { User } from "../domain/User"
 import { getUser } from "./getUser"
+import { LinkedCredentials } from "../domain/Credentials"
 
-export async function getUserFromRequest(users: Repository<User, null>, request: Request): Promise<WithId<User>> {
+export async function getUserFromRequest(users: Repository<LinkedCredentials, null>, request: Request): Promise<WithId<LinkedCredentials>> {
     const authHeader = request.get("Authorization")
     if (!isString(authHeader) || authHeader === "")
         throw Error("No Authorization header provided")

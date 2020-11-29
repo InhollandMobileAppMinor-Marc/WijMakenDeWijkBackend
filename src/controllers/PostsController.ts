@@ -1,11 +1,16 @@
 import { ApiController, HttpGet, HttpPost, Path } from "@peregrine/koa-with-decorators"
-import { MutableRepository } from "@peregrine/mongo-connect"
+import { MutableRepository, Repository } from "@peregrine/mongo-connect"
 import { Context } from "koa"
+import { getUserFromRequest } from "../data/getUserFromRequest"
+import { LinkedCredentials } from "../domain/Credentials"
 import { Post } from "../domain/Post"
 
 @ApiController("/api/v0")
 export class PostsController {
-    constructor(private readonly posts: MutableRepository<Post, null>) { }
+    constructor(
+        private readonly credentialsRepo: Repository<LinkedCredentials, null>,
+        private readonly posts: MutableRepository<Post, null>
+    ) { }
 
     @HttpGet
     @Path("/posts")
@@ -30,6 +35,7 @@ export class PostsController {
     @Path("/posts")
     public async createPost({ request, response }: Context) {
         const body = request.body
+        body.author = (await getUserFromRequest(this.credentialsRepo, request))?.user?.toString()
         if (!Post.isSerialisedPost(body)) {
             response.status = 400
             response.body = {
