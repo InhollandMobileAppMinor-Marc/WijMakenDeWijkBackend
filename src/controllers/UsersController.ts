@@ -4,6 +4,7 @@ import { Context } from "koa"
 import { getUser } from "../data/getUser"
 import { encodeToken } from "../utils/token"
 import { User } from "../domain/User"
+import bcrypt from "bcrypt"
 
 @ApiController("/api/v0")
 export class UsersController {
@@ -42,7 +43,10 @@ export class UsersController {
                 if(emailIsUnique)
                     throw new Error("E-mail is already registered")
 
-                const user = await this.users.add(body)
+                const user = await this.users.add({
+                    email: body.email,
+                    password: await bcrypt.hash(body.password, 10)
+                })
                 if(user === null) 
                     throw new Error("Unknown error")
                 response.status = 200
