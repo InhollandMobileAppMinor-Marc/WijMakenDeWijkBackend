@@ -16,14 +16,18 @@ export class PostsController {
     @Path("/posts")
     public async getAllPosts({ response }: Context) {
         response.status = 200
-        response.body = (await this.posts.getAll()) ?? []
+        response.body = await this.posts.custom(async (model) => {
+            return await model.find().populate("author")
+        }, [])
     }
 
     @HttpGet
     @Path("/posts/:id")
     public async getPostById({ params, response }: Context) {
-        const item = await this.posts.getById(params.id)
-        if(item == null) {
+        const item = await this.posts.custom<any, null>(async (model) => {
+            return await model.findById(params.id).populate("author")
+        }, null)
+        if(item === null) {
             response.status = 404
         } else {
             response.status = 200
