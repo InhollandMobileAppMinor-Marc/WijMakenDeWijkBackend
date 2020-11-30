@@ -5,7 +5,7 @@ import { decodeToken } from "../utils/token"
 import { getUser } from "./getUser"
 import { LinkedCredentials } from "../domain/Credentials"
 
-export async function getUserFromRequest(users: Repository<LinkedCredentials, null>, request: Request): Promise<WithId<LinkedCredentials>> {
+export async function getUserFromRequest(users: Repository<LinkedCredentials>, request: Request): Promise<WithId<LinkedCredentials>> {
     const authHeader = request.get("Authorization")
     if (!isString(authHeader) || authHeader === "")
         throw Error("No Authorization header provided")
@@ -24,8 +24,7 @@ export async function getUserFromRequest(users: Repository<LinkedCredentials, nu
         if (email === null)
             throw Error("Token has expired")
 
-        const usersList = (await users.getAll()) ?? []
-        const user = usersList.find(it => it.email === email) ?? null
+        const user = await users.firstOrNull({email})
 
         if (user === null)
             throw new Error("User does not exist")

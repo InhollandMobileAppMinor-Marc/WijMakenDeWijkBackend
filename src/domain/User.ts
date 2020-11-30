@@ -1,15 +1,16 @@
 import { isObject, isString } from "../utils/checkType"
-import { EMAIL_REGEXP } from "../utils/email"
 
 export interface User {
-    email: string
     name: string
     role: "admin" | "user"
+    houseNumber: string
+    hallway: string
+    location: string
 }
 
 export const User = {
     isUser: (user: any): user is User => {
-        return isObject(user) && isString(user.email) && isString(user.name) && isString(user.role)
-            && EMAIL_REGEXP.test(user.email)
+        return isObject(user) && isString(user.name) && isString(user.role) 
+            && isString(user.houseNumber) && isString(user.hallway) && isString(user.location)
     }
 }

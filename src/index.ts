@@ -18,26 +18,33 @@ async function main() {
     console.log("Connecting to DB...")
     const db = await MongoDB.connect(process.env.MONGO_URL)
     console.log("Connected to DB")
+
+    const mongoErrorHandler = (error: Error) => {
+        console.error(error)
+        return true
+    }
     
-    const posts = db.getMutableNullableRepository<Post>("posts", {
+    const posts = db.getMutableRepository<Post>("posts", {
         title: required(String),
         body: required(String),
         timestamp: required(Date),
         category: required(String),
         author: reference("users", true)
-    })
+    }, mongoErrorHandler)
 
-    const users = db.getMutableNullableRepository<User>("users", {
-        email: required(String),
+    const users = db.getMutableRepository<User>("users", {
         name: required(String),
-        role: required(String)
-    })
+        role: required(String),
+        houseNumber: required(String),
+        hallway: required(String),
+        location: required(String)
+    }, mongoErrorHandler)
 
-    const credentials = db.getMutableNullableRepository<LinkedCredentials>("credentials", {
+    const credentials = db.getMutableRepository<LinkedCredentials>("credentials", {
         email: required(String),
         password: required(String),
         user: reference("users", true)
-    })
+    }, mongoErrorHandler)
     
     const koaApp = new Koa()
     koaApp.use(bodyParser())

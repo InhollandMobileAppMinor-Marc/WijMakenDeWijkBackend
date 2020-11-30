@@ -5,7 +5,7 @@ import { User } from "../domain/User"
 
 @ApiController("/api/v0")
 export class UsersController {
-    constructor(private readonly users: MutableRepository<User, null>) { }
+    constructor(private readonly users: MutableRepository<User>) {}
 
     @HttpGet
     @Path("/users")

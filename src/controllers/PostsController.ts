@@ -8,9 +8,9 @@ import { Post } from "../domain/Post"
 @ApiController("/api/v0")
 export class PostsController {
     constructor(
-        private readonly credentialsRepo: Repository<LinkedCredentials, null>,
-        private readonly posts: MutableRepository<Post, null>
-    ) { }
+        private readonly credentialsRepo: Repository<LinkedCredentials>,
+        private readonly posts: MutableRepository<Post>
+    ) {}
 
     @HttpGet
     @Path("/posts")

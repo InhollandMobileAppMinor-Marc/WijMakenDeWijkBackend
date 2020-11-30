@@ -6,11 +6,14 @@ interface SettingsObject {
 }
 
 export class Settings {
-    private readonly repo: MutableRepository<SettingsObject, null>
+    private readonly repo: MutableRepository<SettingsObject>
 
     constructor(db: MongoDB) {
-        this.repo = db.getMutableNullableRepository("settings", {
+        this.repo = db.getMutableRepository("settings", {
             postsLastModifiedTimeStamp: Date
+        }, (error: Error) => {
+            console.error(error)
+            return true
         })
     }
 

@@ -10,9 +10,9 @@ import { Credentials, LinkedCredentials } from "../domain/Credentials"
 @ApiController("/api/v0")
 export class CredentialsController {
     constructor(
-        private readonly credentialsRepo: MutableRepository<LinkedCredentials, null>,
-        private readonly usersRepo: MutableRepository<User, null>
-    ) { }
+        private readonly credentialsRepo: MutableRepository<LinkedCredentials>,
+        private readonly usersRepo: MutableRepository<User>
+    ) {}
 
     @HttpPost
     @Path("/login")
@@ -43,15 +43,16 @@ export class CredentialsController {
         try {
             body["role"] = "user"
             if(Credentials.areCredentials(body) && User.isUser(body)) {
-                const usersList = (await this.credentialsRepo.getAll()) ?? []
-                const emailIsUnique = (usersList.find(it => it.email === body.email) ?? null) !== null
-                if(emailIsUnique)
+                const emailExists = await this.credentialsRepo.exists({ email: body.email })
+                if(emailExists)
                     throw new Error("E-mail is already registered")
 
                 const user = await this.usersRepo.add({
-                    email: body.email,
                     name: body.name,
-                    role: body.role
+                    role: body.role,
+                    houseNumber: body.houseNumber,
+                    hallway: body.hallway,
+                    location: body.location
                 })
                 if(user === null) 
                     throw new Error("Unknown error")
@@ -65,7 +66,7 @@ export class CredentialsController {
                     throw new Error("Unknown error")
 
                 response.status = 200
-                response.body = user
+                response.body = { ...user, email: credentials.email }
             } else {
                 throw new Error("Invalid body")
             }
