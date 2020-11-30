@@ -18,7 +18,7 @@ export class UsersController {
     @Path("/users/:id")
     public async getUserById({ params, response }: Context) {
         const item = await this.users.getById(params.id)
-        if(item == null) {
+        if(item === null) {
             response.status = 404
         } else {
             response.status = 200
