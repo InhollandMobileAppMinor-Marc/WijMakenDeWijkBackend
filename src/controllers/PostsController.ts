@@ -70,9 +70,14 @@ export class PostsController {
             }
         } else {
             const post = Post.deserialisePost(body)
+            const createdPost = await this.posts.add(post)
+
+            if (createdPost === null)
+                throw new Error("Unkown error")
+
             response.status = 200
             response.body = await this.posts.custom<any, null>(async (model) => {
-                let query = await model.create(post)
+                let query = model.findById(createdPost.id)
                 if (request.query["inlineAuthor"] === "true")
                     query = query.populate("author")
                 return query
