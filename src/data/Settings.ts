@@ -9,7 +9,7 @@ export class Settings {
     private readonly repo: MutableRepository<SettingsObject>
 
     constructor(db: MongoDB) {
-        this.repo = db.getMutableRepository("settings", {
+        this.repo = db.getMutableRepository<SettingsObject>("settings", {
             postsLastModifiedTimeStamp: Date
         }, (error: Error) => {
             console.error(error)

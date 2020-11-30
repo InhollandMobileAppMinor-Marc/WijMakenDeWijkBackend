@@ -1,4 +1,4 @@
-import { isObject, isString } from "../utils/checkType"
+import { isArray, isObject, isString } from "../utils/checkType"
 import moment from "moment"
 
 interface BasePost {
@@ -6,6 +6,7 @@ interface BasePost {
     body: string
     category: string
     author: string
+    comments: string[]
 }
 
 export interface SerialisedPost extends BasePost {
@@ -20,6 +21,7 @@ export const Post = {
     isSerialisedPost: (post: any): post is SerialisedPost => {
         return isObject(post) && isString(post.title) && isString(post.body) 
             && isString(post.timestamp) && isString(post.category) && isString(post.author)
+            && isArray(post.comments)
     },
     deserialisePost: (post: SerialisedPost): Post => {
         return {
@@ -27,7 +29,8 @@ export const Post = {
             body: post.body,
             timestamp: moment(post.timestamp).toDate(),
             category: post.category,
-            author: post.author
+            author: post.author,
+            comments: post.comments
         }
     }
 }

@@ -11,6 +11,8 @@ import { CredentialsController } from "./controllers/CredentialsController"
 import { getUserFromRequest } from "./data/getUserFromRequest"
 import { LinkedCredentials } from "./domain/Credentials"
 import { UsersController } from "./controllers/UsersController"
+import { Comment } from "./domain/Comment"
+import { CommentsController } from "./controllers/CommentsController"
 
 async function main() {
     if (process.env.MONGO_URL === undefined) dotenv.config()
@@ -23,14 +25,6 @@ async function main() {
         console.error(error)
         return true
     }
-    
-    const posts = db.getMutableRepository<Post>("posts", {
-        title: required(String),
-        body: required(String),
-        timestamp: required(Date),
-        category: required(String),
-        author: reference("users", true)
-    }, mongoErrorHandler)
 
     const users = db.getMutableRepository<User>("users", {
         name: required(String),
@@ -38,6 +32,25 @@ async function main() {
         houseNumber: required(String),
         hallway: required(String),
         location: required(String)
+    }, mongoErrorHandler)
+
+    const comments = db.getMutableRepository<Comment>("comments", {
+        body: required(String),
+        timestamp: required(Date),
+        author: reference("users", true),
+        post: reference("posts", true)
+    }, mongoErrorHandler)
+    
+    const posts = db.getMutableRepository<Post>("posts", {
+        title: required(String),
+        body: required(String),
+        timestamp: required(Date),
+        category: required(String),
+        author: reference("users", true),
+        comments: {
+            type: [reference("comments", true)],
+            required: true
+        }
     }, mongoErrorHandler)
 
     const credentials = db.getMutableRepository<LinkedCredentials>("credentials", {
@@ -69,18 +82,22 @@ async function main() {
         return await next()
     })
 
-    const usersRoute = createRouter(CredentialsController, new CredentialsController(credentials, users))
-    koaApp.use(usersRoute.routes())
-    koaApp.use(usersRoute.allowedMethods())
+    const credentialsRouter = createRouter(CredentialsController, new CredentialsController(credentials, users))
+    koaApp.use(credentialsRouter.routes())
+    koaApp.use(credentialsRouter.allowedMethods())
     
     const usersRouter = createRouter(UsersController, new UsersController(users))
     koaApp.use(usersRouter.routes())
     koaApp.use(usersRouter.allowedMethods())
     
-    const postsRouter = createRouter(PostsController, new PostsController(credentials, posts))
+    const postsRouter = createRouter(PostsController, new PostsController(credentials, posts, comments))
     koaApp.use(postsRouter.routes())
     koaApp.use(postsRouter.allowedMethods())
     
+    const commentsRouter = createRouter(CommentsController, new CommentsController(comments))
+    koaApp.use(commentsRouter.routes())
+    koaApp.use(commentsRouter.allowedMethods())
+
     // Remove default response body, catch all errors.
     koaApp.use(async (ctx: Context, next: Next) => {
         try {
