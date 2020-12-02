@@ -19,7 +19,7 @@ export class PostsController {
     public async getAllPosts({ request, response }: Context) {
         response.status = 200
         response.body = await this.posts.custom(async (model) => {
-            let query = model.find()
+            let query = model.find().sort({ timestamp: "desc" })
             if (request.query["inlineComments"] === "true")
                 query = request.query["inlineAuthor"] === "true" ? query.populate({
                     path: "comments",
