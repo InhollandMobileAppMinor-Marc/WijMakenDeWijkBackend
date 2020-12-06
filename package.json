@@ -24,8 +24,8 @@
   },
   "dependencies": {
     "@koa/router": "^10.0.0",
-    "@peregrine/koa-with-decorators": "^0.1.2",
-    "@peregrine/mongo-connect": "^0.3.5",
+    "@peregrine/koa-with-decorators": "^0.9.0",
+    "@peregrine/mongo-connect": "^0.9.1",
     "axios": "^0.21.0",
     "bcrypt": "^5.0.0",
     "dotenv": "^8.2.0",

@@ -1,10 +1,11 @@
 import { ApiController, HttpGet, HttpPost, Path } from "@peregrine/koa-with-decorators"
-import { MutableRepository, Repository } from "@peregrine/mongo-connect"
+import { DocumentQueryBuilder, DocumentsArrayQueryBuilder, MutableRepository, Repository } from "@peregrine/mongo-connect"
 import { Context } from "koa"
 import { getUserFromRequest } from "../data/getUserFromRequest"
 import { Comment } from "../domain/Comment"
 import { LinkedCredentials } from "../domain/Credentials"
 import { Post } from "../domain/Post"
+import { User } from "../domain/User"
 
 @ApiController("/api/v0")
 export class PostsController {
@@ -17,38 +18,33 @@ export class PostsController {
     @HttpGet
     @Path("/posts")
     public async getAllPosts({ request, response }: Context) {
+        let query = this.posts.queryAll({ sort: { timestamp: "desc" } })
+        if (request.query["inlineComments"] === "true") {
+            let tmp = query.inlineReferencedObject<Comment>("comments")
+            query = (request.query["inlineAuthor"] === "true" ? 
+                tmp.inlineReferencedSubObject<User>("comments", "author") : 
+                tmp) as unknown as DocumentsArrayQueryBuilder<Post>
+        }
+        if (request.query["inlineAuthor"] === "true")
+            query = query.inlineReferencedObject<User>("author") as unknown as DocumentsArrayQueryBuilder<Post>
         response.status = 200
-        response.body = await this.posts.custom(async (model) => {
-            let query = model.find().sort({ timestamp: "desc" })
-            if (request.query["inlineComments"] === "true")
-                query = request.query["inlineAuthor"] === "true" ? query.populate({
-                    path: "comments",
-                    populate: {
-                        path: "author"
-                    }
-                }) : query.populate("comments")
-            if (request.query["inlineAuthor"] === "true")
-                query = query.populate("author")
-            return await query
-        }, [])
+        response.body = await query.getResult()
     }
 
     @HttpGet
     @Path("/posts/:id")
     public async getPostById({ request, params, response }: Context) {
-        const item = await this.posts.custom<any, null>(async (model) => {
-            let query = model.findById(params.id)
-            if (request.query["inlineComments"] === "true")
-                query = request.query["inlineAuthor"] === "true" ? query.populate({
-                    path: "comments",
-                    populate: {
-                        path: "author"
-                    }
-                }) : query.populate("comments")
-            if (request.query["inlineAuthor"] === "true")
-                query = query.populate("author")
-            return await query
-        }, null)
+        let query = this.posts.queryById(params.id)
+        if (request.query["inlineComments"] === "true") {
+            let tmp = query.inlineReferencedObject<Comment>("comments")
+            query = (request.query["inlineAuthor"] === "true" ? 
+                tmp.inlineReferencedSubObject<User>("comments", "author") : 
+                tmp) as unknown as DocumentQueryBuilder<Post>
+        }
+        if (request.query["inlineAuthor"] === "true")
+            query = query.inlineReferencedObject<User>("author") as unknown as DocumentQueryBuilder<Post>
+        
+        const item = await query.getResult()
         if(item === null) {
             response.status = 404
         } else {
@@ -75,26 +71,24 @@ export class PostsController {
             if (createdPost === null)
                 throw new Error("Unkown error")
 
+            let query = this.posts.queryById(createdPost.id)
+            if (request.query["inlineAuthor"] === "true")
+                query = query.inlineReferencedObject<User>("author") as unknown as DocumentQueryBuilder<Post>
+
             response.status = 200
-            response.body = await this.posts.custom<any, null>(async (model) => {
-                let query = model.findById(createdPost.id)
-                if (request.query["inlineAuthor"] === "true")
-                    query = query.populate("author")
-                return query
-            }, null)
+            response.body = await query.getResult()
         }
     }
 
     @HttpGet
     @Path("/posts/:postId/comments")
     public async getAllCommentsForPost({ request, params, response }: Context) {
+        let query = this.comments.filterAndQuery({ post: params.postId })
+        if (request.query["inlineAuthor"] === "true")
+            query = query.inlineReferencedObject<User>("author") as unknown as DocumentsArrayQueryBuilder<Comment>
+        
         response.status = 200
-        response.body = await this.comments.custom(async (model) => {
-            let query = model.find({ post: params.postId })
-            if (request.query["inlineAuthor"] === "true")
-                query = query.populate("author")
-            return await query
-        }, [])
+        response.body = await query.getResult()
     }
 
     @HttpPost
@@ -118,14 +112,13 @@ export class PostsController {
             await this.posts.patch(params.postId, {
                 comments: [...post.comments, createdComment.id]
             })
+            
+            let query = this.comments.queryById(createdComment.id)
+            if (request.query["inlineAuthor"] === "true")
+                query = query.inlineReferencedObject<User>("author") as unknown as DocumentQueryBuilder<Comment>
 
             response.status = 200
-            response.body = await this.comments.custom<any, null>(async (model) => {
-                let query = model.findById(createdComment.id)
-                if (request.query["inlineAuthor"] === "true")
-                    query = query.populate("author")
-                return await query
-            }, null)
+            response.body = await query.getResult()
         }
     }
 }
