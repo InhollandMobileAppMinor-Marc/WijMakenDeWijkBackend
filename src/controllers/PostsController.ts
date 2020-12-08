@@ -1,5 +1,5 @@
 import { ApiController, HttpGet, HttpPost, Path } from "@peregrine/koa-with-decorators"
-import { DocumentQueryBuilder, DocumentsArrayQueryBuilder, MutableRepository, Repository } from "@peregrine/mongo-connect"
+import { DocumentQueryBuilder, DocumentsArrayQueryBuilder, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
 import { Context } from "koa"
 import { getUserFromRequest } from "../data/getUserFromRequest"
 import { Comment } from "../domain/Comment"
@@ -11,14 +11,30 @@ import { User } from "../domain/User"
 export class PostsController {
     constructor(
         private readonly credentialsRepo: Repository<LinkedCredentials>,
+        private readonly usersRepo: Repository<User>,
         private readonly posts: MutableRepository<Post>,
         private readonly comments: MutableRepository<Comment>
     ) {}
 
+    protected static getPostPreference(userHallway: string | null, first: WithId<Post>, second: WithId<Post>): number {
+        const differenceInHours = Math.round((first.timestamp.getTime() - second.timestamp.getTime()) / 1000 / 60 / 60)
+        if(userHallway === null) return differenceInHours
+        // Award additional points if the post was made in the same hallway
+        const thresholdInHours = 36
+        const scoreForFirst = (differenceInHours > 0 ? differenceInHours : 0) + (first.hallway === userHallway ? thresholdInHours : 0)
+        const scoreForSecond = (differenceInHours < 0 ? differenceInHours * -1 : 0) + (second.hallway === userHallway ? thresholdInHours : 0)
+        // Preference if score is the same
+        const hallwayBasedPreference = 
+            first.hallway === userHallway && second.hallway !== userHallway ? 1 : 
+            second.hallway === userHallway && first.hallway !== userHallway ? -1 : 0
+        return scoreForFirst === scoreForSecond ? hallwayBasedPreference : scoreForFirst - scoreForSecond
+    }
+
     @HttpGet
     @Path("/posts")
     public async getAllPosts({ request, response }: Context) {
-        let query = this.posts.queryAll({ sort: { timestamp: "desc" } })
+        const user = await this.usersRepo.getById((await getUserFromRequest(this.credentialsRepo, request)).user)
+        let query = this.posts.filterAndQuery({ location: user?.location }, { sort: { timestamp: "desc" } })
         if (request.query["inlineComments"] === "true") {
             let tmp = query.inlineReferencedObject<Comment>("comments")
             query = (request.query["inlineAuthor"] === "true" ? 
@@ -28,7 +44,7 @@ export class PostsController {
         if (request.query["inlineAuthor"] === "true")
             query = query.inlineReferencedObject<User>("author") as unknown as DocumentsArrayQueryBuilder<Post>
         response.status = 200
-        response.body = await query.getResult()
+        response.body = (await query.getResult()).sort((first, second) => PostsController.getPostPreference(user?.hallway ?? null, first, second))
     }
 
     @HttpGet
@@ -57,8 +73,12 @@ export class PostsController {
     @Path("/posts")
     public async createPost({ request, response }: Context) {
         const body = request.body
-        body.author = (await getUserFromRequest(this.credentialsRepo, request))?.user?.toString()
+        const authorId = (await getUserFromRequest(this.credentialsRepo, request))?.user?.toString()
+        const user = await this.usersRepo.getById(authorId)
+        body.author = authorId
         body.comments = []
+        body.hallway = user?.hallway
+        body.location = user?.location
         if (!Post.isSerialisedPost(body)) {
             response.status = 400
             response.body = {

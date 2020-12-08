@@ -1,5 +1,6 @@
 import { isObject, isString } from "../utils/checkType"
 import moment from "moment"
+import { MongoSchema, required, reference } from "@peregrine/mongo-connect"
 
 interface BaseComment {
     body: string
@@ -27,5 +28,11 @@ export const Comment = {
             author: comment.author,
             post: comment.post
         }
-    }
+    },
+    scheme: {
+        body: required(String),
+        timestamp: required(Date),
+        author: reference("users", true),
+        post: reference("posts", true)
+    } as MongoSchema<Comment>
 }

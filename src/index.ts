@@ -9,7 +9,7 @@ import { promisify } from "./utils/promisify"
 import { User } from "./domain/User"
 import { CredentialsController } from "./controllers/CredentialsController"
 import { getUserFromRequest } from "./data/getUserFromRequest"
-import { LinkedCredentials } from "./domain/Credentials"
+import { Credentials } from "./domain/Credentials"
 import { UsersController } from "./controllers/UsersController"
 import { Comment } from "./domain/Comment"
 import { CommentsController } from "./controllers/CommentsController"
@@ -26,38 +26,13 @@ async function main() {
         return true
     }
 
-    const users = db.getMutableRepository<User>("users", {
-        name: required(String),
-        role: required(String),
-        houseNumber: required(String),
-        hallway: required(String),
-        location: required(String)
-    }, mongoErrorHandler)
+    const users = db.getMutableRepository("users", User.scheme, mongoErrorHandler)
 
-    const comments = db.getMutableRepository<Comment>("comments", {
-        body: required(String),
-        timestamp: required(Date),
-        author: reference("users", true),
-        post: reference("posts", true)
-    }, mongoErrorHandler)
+    const comments = db.getMutableRepository("comments", Comment.scheme, mongoErrorHandler)
     
-    const posts = db.getMutableRepository<Post>("posts", {
-        title: required(String),
-        body: required(String),
-        timestamp: required(Date),
-        category: required(String),
-        author: reference("users", true),
-        comments: {
-            type: [reference("comments", true)],
-            required: true
-        }
-    }, mongoErrorHandler)
+    const posts = db.getMutableRepository("posts", Post.scheme, mongoErrorHandler)
 
-    const credentials = db.getMutableRepository<LinkedCredentials>("credentials", {
-        email: required(String),
-        password: required(String),
-        user: reference("users", true)
-    }, mongoErrorHandler)
+    const credentials = db.getMutableRepository("credentials", Credentials.scheme, mongoErrorHandler)
     
     const koaApp = new Koa()
     koaApp.use(bodyParser())
