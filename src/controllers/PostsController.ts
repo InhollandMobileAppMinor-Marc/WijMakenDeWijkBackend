@@ -1,5 +1,5 @@
 import { ApiController, HttpGet, HttpPost, Path } from "@peregrine/koa-with-decorators"
-import { DocumentQueryBuilder, DocumentsArrayQueryBuilder, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
+import { DocumentQueryBuilder, DocumentsArrayQueryBuilder, Filter, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
 import { Context } from "koa"
 import { getUserFromRequest } from "../data/getUserFromRequest"
 import { Comment } from "../domain/Comment"
@@ -34,7 +34,10 @@ export class PostsController {
     @Path("/posts")
     public async getAllPosts({ request, response }: Context) {
         const user = await this.usersRepo.getById((await getUserFromRequest(this.credentialsRepo, request)).user)
-        let query = this.posts.filterAndQuery({ location: user?.location }, { sort: { timestamp: "desc" } })
+        const categories = (request.query["categories"] as string | null | undefined)?.split(",") ?? null
+        const filter: Filter<Post> = { location: user?.location }
+        if(categories !== null) filter.category = { $in: categories }
+        let query = this.posts.filterAndQuery(filter, { sort: { timestamp: "desc" } })
         if (request.query["inlineComments"] === "true") {
             let tmp = query.inlineReferencedObject<Comment>("comments")
             query = (request.query["inlineAuthor"] === "true" ? 
