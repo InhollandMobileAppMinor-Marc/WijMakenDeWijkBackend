@@ -1,6 +1,6 @@
 import { createRouter } from "@peregrine/koa-with-decorators"
 import dotenv from "dotenv"
-import { MongoDB, reference, required } from "@peregrine/mongo-connect"
+import { MongoDB } from "@peregrine/mongo-connect"
 import Koa, { Context, Next } from "koa"
 import bodyParser from "koa-bodyparser"
 import { PostsController } from "./controllers/PostsController"
@@ -65,7 +65,7 @@ async function main() {
     koaApp.use(usersRouter.routes())
     koaApp.use(usersRouter.allowedMethods())
     
-    const postsRouter = createRouter(PostsController, new PostsController(credentials, posts, comments))
+    const postsRouter = createRouter(PostsController, new PostsController(credentials, users, posts, comments))
     koaApp.use(postsRouter.routes())
     koaApp.use(postsRouter.allowedMethods())
     
