@@ -25,9 +25,9 @@ export class PostsController {
         const scoreForSecond = (differenceInHours < 0 ? differenceInHours * -1 : 0) + (second.hallway === userHallway ? thresholdInHours : 0)
         // Preference if score is the same
         const hallwayBasedPreference = 
-            first.hallway === userHallway && second.hallway !== userHallway ? 1 : 
-            second.hallway === userHallway && first.hallway !== userHallway ? -1 : 0
-        return scoreForFirst === scoreForSecond ? hallwayBasedPreference : scoreForFirst - scoreForSecond
+            first.hallway === userHallway && second.hallway !== userHallway ? -1 : 
+            second.hallway === userHallway && first.hallway !== userHallway ? 1 : 0
+        return scoreForFirst === scoreForSecond ? hallwayBasedPreference : scoreForSecond - scoreForFirst
     }
 
     @HttpGet
