@@ -17,7 +17,10 @@ export const Credentials = {
             && EMAIL_REGEXP.test(credentials.email)
     },
     scheme: {
-        email: required(String),
+        email: {
+            ...required(String),
+            index: true
+        },
         password: required(String),
         user: reference("users", true)
     } as MongoSchema<LinkedCredentials>

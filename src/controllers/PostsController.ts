@@ -12,8 +12,7 @@ export class PostsController {
     constructor(
         private readonly credentialsRepo: Repository<LinkedCredentials>,
         private readonly usersRepo: Repository<User>,
-        private readonly posts: MutableRepository<Post>,
-        private readonly comments: MutableRepository<Comment>
+        private readonly posts: MutableRepository<Post>
     ) {}
 
     protected static getPostPreference(userHallway: string | null, first: WithId<Post>, second: WithId<Post>): number {
@@ -97,48 +96,6 @@ export class PostsController {
             let query = this.posts.queryById(createdPost.id)
             if (request.query["inlineAuthor"] === "true")
                 query = query.inlineReferencedObject<User>("author") as unknown as DocumentQueryBuilder<Post>
-
-            response.status = 200
-            response.body = await query.getResult()
-        }
-    }
-
-    @HttpGet
-    @Path("/posts/:postId/comments")
-    public async getAllCommentsForPost({ request, params, response }: Context) {
-        let query = this.comments.filterAndQuery({ post: params.postId })
-        if (request.query["inlineAuthor"] === "true")
-            query = query.inlineReferencedObject<User>("author") as unknown as DocumentsArrayQueryBuilder<Comment>
-        
-        response.status = 200
-        response.body = await query.getResult()
-    }
-
-    @HttpPost
-    @Path("/posts/:postId/comments")
-    public async createCommentForPost({ request, params, response }: Context) {
-        const body = request.body
-        body.author = (await getUserFromRequest(this.credentialsRepo, request))?.user?.toString()
-        body.post = params.postId
-        if (!Comment.isSerialisedComment(body)) {
-            response.status = 400
-            response.body = {
-                message: "Invalid request body"
-            }
-        } else {
-            const comment = Comment.deserialiseComment(body)
-            const createdComment = await this.comments.add(comment)
-            const post = await this.posts.getById(params.postId)
-            if (post === null || createdComment === null)
-                throw new Error("Unkown error")
-
-            await this.posts.patch(params.postId, {
-                comments: [...post.comments, createdComment.id]
-            })
-            
-            let query = this.comments.queryById(createdComment.id)
-            if (request.query["inlineAuthor"] === "true")
-                query = query.inlineReferencedObject<User>("author") as unknown as DocumentQueryBuilder<Comment>
 
             response.status = 200
             response.body = await query.getResult()

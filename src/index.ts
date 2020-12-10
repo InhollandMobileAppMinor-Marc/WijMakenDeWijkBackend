@@ -13,6 +13,8 @@ import { Credentials } from "./domain/Credentials"
 import { UsersController } from "./controllers/UsersController"
 import { Comment } from "./domain/Comment"
 import { CommentsController } from "./controllers/CommentsController"
+import { Notification } from "./domain/Notification"
+import { NotificationsController } from "./controllers/NotificationsController"
 
 async function main() {
     if (process.env.MONGO_URL === undefined) dotenv.config()
@@ -29,6 +31,8 @@ async function main() {
     const users = db.getMutableRepository("users", User.scheme, mongoErrorHandler)
 
     const comments = db.getMutableRepository("comments", Comment.scheme, mongoErrorHandler)
+
+    const notifications = db.getMutableRepository("notifications", Notification.scheme, mongoErrorHandler)
     
     const posts = db.getMutableRepository("posts", Post.scheme, mongoErrorHandler)
 
@@ -65,13 +69,17 @@ async function main() {
     koaApp.use(usersRouter.routes())
     koaApp.use(usersRouter.allowedMethods())
     
-    const postsRouter = createRouter(PostsController, new PostsController(credentials, users, posts, comments))
+    const postsRouter = createRouter(PostsController, new PostsController(credentials, users, posts))
     koaApp.use(postsRouter.routes())
     koaApp.use(postsRouter.allowedMethods())
     
-    const commentsRouter = createRouter(CommentsController, new CommentsController(comments))
+    const commentsRouter = createRouter(CommentsController, new CommentsController(credentials, comments, posts, notifications))
     koaApp.use(commentsRouter.routes())
     koaApp.use(commentsRouter.allowedMethods())
+    
+    const notificationsRouter = createRouter(NotificationsController, new NotificationsController(credentials, notifications))
+    koaApp.use(notificationsRouter.routes())
+    koaApp.use(notificationsRouter.allowedMethods())
 
     // Remove default response body, catch all errors.
     koaApp.use(async (ctx: Context, next: Next) => {
