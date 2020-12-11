@@ -5,6 +5,7 @@ import { getUserFromRequest } from "../data/getUserFromRequest"
 import { Comment } from "../domain/Comment"
 import { LinkedCredentials } from "../domain/Credentials"
 import { Notification } from "../domain/Notification"
+import { Post } from "../domain/Post"
 import { User } from "../domain/User"
 
 @ApiController("/api/v0")
@@ -25,12 +26,13 @@ export class NotificationsController {
                 tmp0.inlineReferencedSubObject<User>("comments", "author") : 
                 tmp0) as unknown as DocumentsArrayQueryBuilder<Notification>
         }
-        /* if (request.query["inlinePost"] === "true") {
-            let tmp1 = query.inlineReferencedObject<Post>("post") as DocumentsArrayQueryBuilder<ReplaceValueForKey<Notification, "post", WithId<Post> | null>>
+        if (request.query["inlinePost"] === "true") {
+            let tmp1 = query.inlineReferencedObject<Post>("post")
             query = (request.query["inlineAuthor"] === "true" ? 
+                // @ts-ignore
                 tmp1.inlineReferencedSubObject<User>("post", "author") : 
                 tmp1) as unknown as DocumentsArrayQueryBuilder<Notification>
-        } */
+        }
         const items = await query.getResult()
         if(items === []) {
             response.status = 204
@@ -55,12 +57,13 @@ export class NotificationsController {
                 tmp0.inlineReferencedSubObject<User>("comments", "author") : 
                 tmp0) as unknown as DocumentsArrayQueryBuilder<Notification>
         }
-        /* if (request.query["inlinePost"] === "true") {
-            let tmp1 = query.inlineReferencedObject<Post>("post") as DocumentsArrayQueryBuilder<ReplaceValueForKey<Notification, "post", WithId<Post> | null>>
+        if (request.query["inlinePost"] === "true") {
+            let tmp1 = query.inlineReferencedObject<Post>("post")
             query = (request.query["inlineAuthor"] === "true" ? 
+                // @ts-ignore
                 tmp1.inlineReferencedSubObject<User>("post", "author") : 
                 tmp1) as unknown as DocumentsArrayQueryBuilder<Notification>
-        } */
+        }
         const items = await query.getResult()
         if(items === []) {
             response.status = 204
