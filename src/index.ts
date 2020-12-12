@@ -15,6 +15,7 @@ import { Comment } from "./domain/Comment"
 import { CommentsController } from "./controllers/CommentsController"
 import { Notification } from "./domain/Notification"
 import { NotificationsController } from "./controllers/NotificationsController"
+import { StatusController } from "./controllers/StatusController"
 
 async function main() {
     if (process.env.MONGO_URL === undefined) dotenv.config()
@@ -45,7 +46,8 @@ async function main() {
         if(
             request.path.startsWith("/api/v0") && 
             !request.path.startsWith("/api/v0/login") && 
-            !request.path.startsWith("/api/v0/register")
+            !request.path.startsWith("/api/v0/register") && 
+            !request.path.startsWith("/api/v0/status")
         ) {
             try {
                 await getUserFromRequest(credentials, request)
@@ -64,6 +66,10 @@ async function main() {
     const credentialsRouter = createRouter(CredentialsController, new CredentialsController(credentials, users))
     koaApp.use(credentialsRouter.routes())
     koaApp.use(credentialsRouter.allowedMethods())
+
+    const statusRouter = createRouter(StatusController, new StatusController(credentials, users))
+    koaApp.use(statusRouter.routes())
+    koaApp.use(statusRouter.allowedMethods())
     
     const usersRouter = createRouter(UsersController, new UsersController(users))
     koaApp.use(usersRouter.routes())
