@@ -84,7 +84,7 @@ export class CommentsController {
     }
 
     private async createNotification(post: WithId<Post>, comment: WithId<Comment>): Promise<WithId<Notification> | null> {
-        if(post.author === comment.author) 
+        if(post.author.toString() === comment.author.toString()) 
             return null
 
         const notification = await this.notifications.firstOrNull({ user: post.author, post: post.id })
