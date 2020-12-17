@@ -91,6 +91,9 @@ async function main() {
     apiVersionZeroRoute.use(notificationsRouter.routes())
     apiVersionZeroRoute.use(notificationsRouter.allowedMethods())
 
+    koaApp.use(apiVersionZeroRoute.routes())
+    koaApp.use(apiVersionZeroRoute.allowedMethods())
+
     // Remove default response body, catch all errors.
     koaApp.use(async (ctx: Context, next: Next) => {
         try {
