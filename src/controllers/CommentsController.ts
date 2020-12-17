@@ -1,4 +1,4 @@
-import { AuthHeader, Body, CachedFor, Controller, DefaultStatusCode, HttpGet, HttpPost, ID, Path, Query, Req, Res } from "@peregrine/koa-with-decorators"
+import { AuthHeader, Body, CachedFor, Controller, DefaultStatusCode, HttpGet, HttpPost, ID, Path, Query, Res } from "@peregrine/koa-with-decorators"
 import { DocumentQueryBuilder, DocumentsArrayQueryBuilder, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
 import { Response } from "koa"
 import { getUserFromRequest } from "../data/getUserFromRequest"

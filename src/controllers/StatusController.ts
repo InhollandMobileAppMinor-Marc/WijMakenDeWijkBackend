@@ -1,6 +1,6 @@
 import { AuthHeader, Controller, DefaultStatusCode, HttpGet, Path, Res } from "@peregrine/koa-with-decorators"
 import { Repository } from "@peregrine/mongo-connect"
-import { Context, Response } from "koa"
+import { Response } from "koa"
 import { User } from "../domain/User"
 import { LinkedCredentials } from "../domain/Credentials"
 import { getUserFromRequest } from "../data/getUserFromRequest"
