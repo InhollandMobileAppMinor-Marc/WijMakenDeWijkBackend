@@ -1,27 +1,28 @@
-import { ApiController, HttpGet, Path } from "@peregrine/koa-with-decorators"
+import { CachedFor, Controller, DefaultStatusCode, HttpGet, ID, Path, Res } from "@peregrine/koa-with-decorators"
 import { MutableRepository } from "@peregrine/mongo-connect"
-import { Context } from "koa"
+import { Response } from "koa"
 import { User } from "../domain/User"
 
-@ApiController("/api/v0")
+@Controller("/users")
 export class UsersController {
     constructor(private readonly users: MutableRepository<User>) {}
 
     @HttpGet
-    @Path("/users")
-    public async getAllUsers({ response }: Context) {
-        response.status = 200
+    @DefaultStatusCode(200)
+    @CachedFor(2, "minutes")
+    public async getAllUsers(@Res response: Response) {
         response.body = (await this.users.getAll()) ?? []
     }
 
     @HttpGet
-    @Path("/users/:id")
-    public async getUserById({ params, response }: Context) {
-        const item = await this.users.getById(params.id)
+    @Path("/:id")
+    @DefaultStatusCode(200)
+    @CachedFor(90, "minutes")
+    public async getUserById(@ID id: string, @Res response: Response) {
+        const item = await this.users.getById(id)
         if(item === null) {
             response.status = 404
         } else {
-            response.status = 200
             response.body = item
         }
     }

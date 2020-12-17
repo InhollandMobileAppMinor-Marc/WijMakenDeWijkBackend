@@ -5,8 +5,8 @@ import { decodeToken } from "../utils/token"
 import { getUser } from "./getUser"
 import { LinkedCredentials } from "../domain/Credentials"
 
-export async function getUserFromRequest(credentials: Repository<LinkedCredentials>, request: Request): Promise<WithId<LinkedCredentials>> {
-    const authHeader = request.get("Authorization")
+export async function getUserFromRequest(credentials: Repository<LinkedCredentials>, requestOrAuthHeader: Request | string): Promise<WithId<LinkedCredentials>> {
+    const authHeader = typeof requestOrAuthHeader === "string" ? requestOrAuthHeader : requestOrAuthHeader.get("Authorization")
     if (!isString(authHeader) || authHeader === "")
         throw Error("No Authorization header provided")
 

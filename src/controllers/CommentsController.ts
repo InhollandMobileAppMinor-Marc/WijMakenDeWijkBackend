@@ -1,6 +1,6 @@
-import { ApiController, HttpGet, HttpPost, Path } from "@peregrine/koa-with-decorators"
+import { AuthHeader, Body, CachedFor, Controller, DefaultStatusCode, HttpGet, HttpPost, ID, Path, Query, Req, Res } from "@peregrine/koa-with-decorators"
 import { DocumentQueryBuilder, DocumentsArrayQueryBuilder, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
-import { Context } from "koa"
+import { Response } from "koa"
 import { getUserFromRequest } from "../data/getUserFromRequest"
 import { Comment } from "../domain/Comment"
 import { LinkedCredentials } from "../domain/Credentials"
@@ -8,7 +8,7 @@ import { Notification } from "../domain/Notification"
 import { Post } from "../domain/Post"
 import { User } from "../domain/User"
 
-@ApiController("/api/v0")
+@Controller
 export class CommentsController {
     constructor(
         private readonly credentialsRepo: Repository<LinkedCredentials>,
@@ -19,26 +19,38 @@ export class CommentsController {
 
     @HttpGet
     @Path("/comments/:id")
-    public async getCommentById({ request, params, response }: Context) {
-        let query = this.comments.queryById(params.id)
-        if (request.query["inlineAuthor"] === "true")
+    @DefaultStatusCode(200)
+    @CachedFor(90, "minutes")
+    public async getCommentById(
+        @ID id: string, 
+        @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
+        @Query("inlinePost") inlinePost: "true" | "false" | undefined, 
+        @Res response: Response
+    ) {
+        let query = this.comments.queryById(id)
+        if (inlineAuthor === "true")
             query = query.inlineReferencedObject<User>("author") as unknown as DocumentQueryBuilder<Comment>
-        if (request.query["inlinePost"] === "true")
+        if (inlinePost === "true")
             query = query.inlineReferencedObject<Post>("post") as unknown as DocumentQueryBuilder<Comment>
         const item = await query.getResult()
         if(item === null) {
             response.status = 404
         } else {
-            response.status = 200
             response.body = item
         }
     }
 
     @HttpGet
-    @Path("/posts/:postId/comments")
-    public async getAllCommentsForPost({ request, params, response }: Context) {
-        let query = this.comments.filterAndQuery({ post: params.postId })
-        if (request.query["inlineAuthor"] === "true")
+    @Path("/posts/:id/comments")
+    @DefaultStatusCode(200)
+    @CachedFor(90, "seconds")
+    public async getAllCommentsForPost(
+        @ID id: string, 
+        @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
+        @Res response: Response
+    ) {
+        let query = this.comments.filterAndQuery({ post: id })
+        if (inlineAuthor === "true")
             query = query.inlineReferencedObject<User>("author") as unknown as DocumentsArrayQueryBuilder<Comment>
         
         response.status = 200
@@ -46,11 +58,17 @@ export class CommentsController {
     }
 
     @HttpPost
-    @Path("/posts/:postId/comments")
-    public async createCommentForPost({ request, params, response }: Context) {
-        const body = request.body
-        body.author = (await getUserFromRequest(this.credentialsRepo, request))?.user?.toString()
-        body.post = params.postId
+    @Path("/posts/:id/comments")
+    @DefaultStatusCode(201)
+    public async createCommentForPost(
+        @ID postId: string, 
+        @Body body: Partial<Comment>,
+        @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
+        @AuthHeader authHeader: string,
+        @Res response: Response
+    ) {
+        body.author = (await getUserFromRequest(this.credentialsRepo, authHeader))?.user?.toString()
+        body.post = postId
         if (!Comment.isSerialisedComment(body)) {
             response.status = 400
             response.body = {
@@ -59,7 +77,7 @@ export class CommentsController {
         } else {
             const comment = Comment.deserialiseComment(body)
             const createdComment = await this.comments.add(comment)
-            const post = await this.posts.getById(params.postId)
+            const post = await this.posts.getById(postId)
             if (post === null || createdComment === null)
                 throw new Error("Unkown error")
 
@@ -69,10 +87,9 @@ export class CommentsController {
             ])
             
             let query = this.comments.queryById(createdComment.id)
-            if (request.query["inlineAuthor"] === "true")
+            if (inlineAuthor === "true")
                 query = query.inlineReferencedObject<User>("author") as unknown as DocumentQueryBuilder<Comment>
 
-            response.status = 200
             response.body = await query.getResult()
         }
     }

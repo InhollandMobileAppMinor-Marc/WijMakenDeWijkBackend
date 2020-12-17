@@ -16,6 +16,7 @@ import { CommentsController } from "./controllers/CommentsController"
 import { Notification } from "./domain/Notification"
 import { NotificationsController } from "./controllers/NotificationsController"
 import { StatusController } from "./controllers/StatusController"
+import Router from "@koa/router"
 
 async function main() {
     if (process.env.MONGO_URL === undefined) dotenv.config()
@@ -42,9 +43,12 @@ async function main() {
     const koaApp = new Koa()
     koaApp.use(bodyParser())
 
-    koaApp.use(async ({ request, response }, next) => {
+    const apiVersionZeroRoute = new Router({
+        prefix: "/api/v0"
+    })
+
+    apiVersionZeroRoute.use(async ({ request, response }, next) => {
         if(
-            request.path.startsWith("/api/v0") && 
             !request.path.startsWith("/api/v0/login") && 
             !request.path.startsWith("/api/v0/register") && 
             !request.path.startsWith("/api/v0/status")
@@ -63,29 +67,29 @@ async function main() {
         return await next()
     })
 
-    const credentialsRouter = createRouter(CredentialsController, new CredentialsController(credentials, users))
-    koaApp.use(credentialsRouter.routes())
-    koaApp.use(credentialsRouter.allowedMethods())
+    const credentialsRouter = createRouter(new CredentialsController(credentials, users))
+    apiVersionZeroRoute.use(credentialsRouter.routes())
+    apiVersionZeroRoute.use(credentialsRouter.allowedMethods())
 
-    const statusRouter = createRouter(StatusController, new StatusController(credentials, users))
-    koaApp.use(statusRouter.routes())
-    koaApp.use(statusRouter.allowedMethods())
+    const statusRouter = createRouter(new StatusController(credentials, users))
+    apiVersionZeroRoute.use(statusRouter.routes())
+    apiVersionZeroRoute.use(statusRouter.allowedMethods())
     
-    const usersRouter = createRouter(UsersController, new UsersController(users))
-    koaApp.use(usersRouter.routes())
-    koaApp.use(usersRouter.allowedMethods())
+    const usersRouter = createRouter(new UsersController(users))
+    apiVersionZeroRoute.use(usersRouter.routes())
+    apiVersionZeroRoute.use(usersRouter.allowedMethods())
     
-    const postsRouter = createRouter(PostsController, new PostsController(credentials, users, posts))
-    koaApp.use(postsRouter.routes())
-    koaApp.use(postsRouter.allowedMethods())
+    const postsRouter = createRouter(new PostsController(credentials, users, posts))
+    apiVersionZeroRoute.use(postsRouter.routes())
+    apiVersionZeroRoute.use(postsRouter.allowedMethods())
     
-    const commentsRouter = createRouter(CommentsController, new CommentsController(credentials, comments, posts, notifications))
-    koaApp.use(commentsRouter.routes())
-    koaApp.use(commentsRouter.allowedMethods())
+    const commentsRouter = createRouter(new CommentsController(credentials, comments, posts, notifications))
+    apiVersionZeroRoute.use(commentsRouter.routes())
+    apiVersionZeroRoute.use(commentsRouter.allowedMethods())
     
-    const notificationsRouter = createRouter(NotificationsController, new NotificationsController(credentials, notifications))
-    koaApp.use(notificationsRouter.routes())
-    koaApp.use(notificationsRouter.allowedMethods())
+    const notificationsRouter = createRouter(new NotificationsController(credentials, notifications))
+    apiVersionZeroRoute.use(notificationsRouter.routes())
+    apiVersionZeroRoute.use(notificationsRouter.allowedMethods())
 
     // Remove default response body, catch all errors.
     koaApp.use(async (ctx: Context, next: Next) => {

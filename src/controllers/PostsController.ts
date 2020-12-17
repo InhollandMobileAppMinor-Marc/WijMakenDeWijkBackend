@@ -1,13 +1,13 @@
-import { ApiController, HttpGet, HttpPost, Path } from "@peregrine/koa-with-decorators"
+import { AuthHeader, Body, CachedFor, Controller, DefaultStatusCode, HttpGet, HttpPost, ID, Path, Query, Res } from "@peregrine/koa-with-decorators"
 import { DocumentQueryBuilder, DocumentsArrayQueryBuilder, Filter, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
-import { Context } from "koa"
+import { Response } from "koa"
 import { getUserFromRequest } from "../data/getUserFromRequest"
 import { Comment } from "../domain/Comment"
 import { LinkedCredentials } from "../domain/Credentials"
 import { Post } from "../domain/Post"
 import { User } from "../domain/User"
 
-@ApiController("/api/v0")
+@Controller("/posts")
 export class PostsController {
     constructor(
         private readonly credentialsRepo: Repository<LinkedCredentials>,
@@ -30,52 +30,69 @@ export class PostsController {
     }
 
     @HttpGet
-    @Path("/posts")
-    public async getAllPosts({ request, response }: Context) {
-        const user = await this.usersRepo.getById((await getUserFromRequest(this.credentialsRepo, request)).user)
-        const categories = (request.query["categories"] as string | null | undefined)?.split(",") ?? null
+    @DefaultStatusCode(200)
+    @CachedFor(90, "seconds")
+    public async getAllPosts(
+        @AuthHeader authHeader: string,
+        @Query("categories") categoriesQuery: string | undefined, 
+        @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
+        @Query("inlineComments") inlineComments: "true" | "false" | undefined, 
+        @Res response: Response
+    ) {
+        const user = await this.usersRepo.getById((await getUserFromRequest(this.credentialsRepo, authHeader)).user)
+        const categories = (categoriesQuery as string | null | undefined)?.split(",") ?? null
         const filter: Filter<Post> = { location: user?.location }
         if(categories !== null) filter.category = { $in: categories }
         let query = this.posts.filterAndQuery(filter, { sort: { timestamp: "desc" } })
-        if (request.query["inlineComments"] === "true") {
+        if (inlineComments === "true") {
             let tmp = query.inlineReferencedObject<Comment>("comments")
-            query = (request.query["inlineAuthor"] === "true" ? 
-                tmp.inlineReferencedSubObject<User>("comments", "author") : 
+            query = (inlineAuthor === "true" ? 
+                tmp.inlineReferencedSubObject<User, "comments">("comments", "author") : 
                 tmp) as unknown as DocumentsArrayQueryBuilder<Post>
         }
-        if (request.query["inlineAuthor"] === "true")
+        if (inlineAuthor === "true")
             query = query.inlineReferencedObject<User>("author") as unknown as DocumentsArrayQueryBuilder<Post>
-        response.status = 200
+
         response.body = (await query.getResult()).sort((first, second) => PostsController.getPostPreference(user?.hallway ?? null, first, second))
     }
 
     @HttpGet
-    @Path("/posts/:id")
-    public async getPostById({ request, params, response }: Context) {
-        let query = this.posts.queryById(params.id)
-        if (request.query["inlineComments"] === "true") {
+    @Path("/:id")
+    @DefaultStatusCode(200)
+    @CachedFor(90, "seconds")
+    public async getPostById(
+        @ID id: string,
+        @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
+        @Query("inlineComments") inlineComments: "true" | "false" | undefined, 
+        @Res response: Response
+    ) {
+        let query = this.posts.queryById(id)
+        if (inlineComments === "true") {
             let tmp = query.inlineReferencedObject<Comment>("comments")
-            query = (request.query["inlineAuthor"] === "true" ? 
-                tmp.inlineReferencedSubObject<User>("comments", "author") : 
+            query = (inlineAuthor === "true" ? 
+                tmp.inlineReferencedSubObject<User, "comments">("comments", "author") : 
                 tmp) as unknown as DocumentQueryBuilder<Post>
         }
-        if (request.query["inlineAuthor"] === "true")
+        if (inlineAuthor === "true")
             query = query.inlineReferencedObject<User>("author") as unknown as DocumentQueryBuilder<Post>
         
         const item = await query.getResult()
         if(item === null) {
             response.status = 404
         } else {
-            response.status = 200
             response.body = item
         }
     }
 
     @HttpPost
-    @Path("/posts")
-    public async createPost({ request, response }: Context) {
-        const body = request.body
-        const authorId = (await getUserFromRequest(this.credentialsRepo, request))?.user?.toString()
+    @DefaultStatusCode(201)
+    public async createPost(
+        @AuthHeader authHeader: string,
+        @Body body: Partial<Post>,
+        @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
+        @Res response: Response
+    ) {
+        const authorId = (await getUserFromRequest(this.credentialsRepo, authHeader))?.user?.toString()
         const user = await this.usersRepo.getById(authorId)
         body.author = authorId
         body.comments = []
@@ -94,10 +111,9 @@ export class PostsController {
                 throw new Error("Unkown error")
 
             let query = this.posts.queryById(createdPost.id)
-            if (request.query["inlineAuthor"] === "true")
+            if (inlineAuthor === "true")
                 query = query.inlineReferencedObject<User>("author") as unknown as DocumentQueryBuilder<Post>
 
-            response.status = 200
             response.body = await query.getResult()
         }
     }

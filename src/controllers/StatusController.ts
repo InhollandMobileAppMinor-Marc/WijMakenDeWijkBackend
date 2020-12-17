@@ -1,11 +1,11 @@
-import { ApiController, HttpGet, Path } from "@peregrine/koa-with-decorators"
+import { AuthHeader, Controller, DefaultStatusCode, HttpGet, Path, Res } from "@peregrine/koa-with-decorators"
 import { Repository } from "@peregrine/mongo-connect"
-import { Context } from "koa"
+import { Context, Response } from "koa"
 import { User } from "../domain/User"
 import { LinkedCredentials } from "../domain/Credentials"
 import { getUserFromRequest } from "../data/getUserFromRequest"
 
-@ApiController("/api/v0")
+@Controller
 export class StatusController {
     constructor(
         private readonly credentialsRepo: Repository<LinkedCredentials>,
@@ -14,16 +14,16 @@ export class StatusController {
 
     @HttpGet
     @Path("/status")
-    public async getStatus({ request, response }: Context) {
+    @DefaultStatusCode(200)
+    public async getStatus(@AuthHeader authHeader: string, @Res response: Response) {
         let user
         try {
-            const credentials = await getUserFromRequest(this.credentialsRepo, request)
+            const credentials = await getUserFromRequest(this.credentialsRepo, authHeader)
             user = await this.usersRepo.getById(credentials.user)
         } catch (error) {
             user = null
         }
 
-        response.status = 200
         response.body = {
             loggedIn: user !== null,
             user: user

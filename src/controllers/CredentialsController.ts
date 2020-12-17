@@ -1,13 +1,13 @@
-import { ApiController, HttpPost, Path } from "@peregrine/koa-with-decorators"
+import { Body, Controller, DefaultStatusCode, HttpPost, Path, Res } from "@peregrine/koa-with-decorators"
 import { MutableRepository } from "@peregrine/mongo-connect"
-import { Context } from "koa"
+import { Response } from "koa"
 import { getUser } from "../data/getUser"
 import { encodeToken } from "../utils/token"
 import { User } from "../domain/User"
 import bcrypt from "bcrypt"
 import { Credentials, LinkedCredentials } from "../domain/Credentials"
 
-@ApiController("/api/v0")
+@Controller
 export class CredentialsController {
     constructor(
         private readonly credentialsRepo: MutableRepository<LinkedCredentials>,
@@ -16,12 +16,12 @@ export class CredentialsController {
 
     @HttpPost
     @Path("/login")
-    public async login({ request, response }: Context) {
-        const body = request.body
+    @DefaultStatusCode(200)
+    public async login(@Body body: Partial<Credentials>, @Res response: Response) {
         try {
             if(Credentials.areCredentials(body)) {
                 const user = await getUser(this.credentialsRepo, body.email, body.password)
-                response.status = 200
+
                 response.body = {
                     token: encodeToken(user.email)
                 }
@@ -38,8 +38,8 @@ export class CredentialsController {
 
     @HttpPost
     @Path("/register")
-    public async register({ request, response }: Context) {
-        const body = request.body
+    @DefaultStatusCode(200)
+    public async register(@Body body: Partial<Credentials & User>, @Res response: Response) {
         try {
             body["role"] = "user"
             if(Credentials.areCredentials(body) && User.isUser(body)) {
@@ -65,7 +65,6 @@ export class CredentialsController {
                 if(credentials === null) 
                     throw new Error("Unknown error")
 
-                response.status = 200
                 response.body = { ...user, email: credentials.email }
             } else {
                 throw new Error("Invalid body")

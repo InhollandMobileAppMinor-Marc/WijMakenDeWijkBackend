@@ -1,6 +1,6 @@
-import { ApiController, HttpDelete, HttpGet, Path } from "@peregrine/koa-with-decorators"
-import { DocumentsArrayQueryBuilder, MutableRepository, Repository } from "@peregrine/mongo-connect"
-import { Context } from "koa"
+import { AuthHeader, Controller, DefaultStatusCode, HttpDelete, HttpGet, Query, Res } from "@peregrine/koa-with-decorators"
+import { DocumentsArrayQueryBuilder, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
+import { Context, Response } from "koa"
 import { getUserFromRequest } from "../data/getUserFromRequest"
 import { Comment } from "../domain/Comment"
 import { LinkedCredentials } from "../domain/Credentials"
@@ -8,7 +8,9 @@ import { Notification } from "../domain/Notification"
 import { Post } from "../domain/Post"
 import { User } from "../domain/User"
 
-@ApiController("/api/v0")
+type QueryObj = { [key: string]: string | undefined }
+
+@Controller("/notifications")
 export class NotificationsController {
     constructor(
         private readonly credentialsRepo: Repository<LinkedCredentials>,
@@ -16,28 +18,12 @@ export class NotificationsController {
     ) {}
 
     @HttpGet
-    @Path("/notifications")
-    public async getNotifications({ request, response }: Context) {
-        const userId = (await getUserFromRequest(this.credentialsRepo, request))?.user?.toString()
-        let query = this.notifications.filterAndQuery({ user: userId })
-        if (request.query["inlineComments"] === "true") {
-            let tmp0 = query.inlineReferencedObject<Comment>("comments")
-            query = (request.query["inlineAuthor"] === "true" ? 
-                tmp0.inlineReferencedSubObject<User>("comments", "author") : 
-                tmp0) as unknown as DocumentsArrayQueryBuilder<Notification>
-        }
-        if (request.query["inlinePost"] === "true") {
-            let tmp1 = query.inlineReferencedObject<Post>("post")
-            query = (request.query["inlineAuthor"] === "true" ? 
-                // @ts-ignore
-                tmp1.inlineReferencedSubObject<User>("post", "author") : 
-                tmp1) as unknown as DocumentsArrayQueryBuilder<Notification>
-        }
-        const items = await query.getResult()
+    @DefaultStatusCode(200)
+    public async getNotifications(@AuthHeader authHeader: string, @Query query: QueryObj, @Res response: Response) {
+        const items = await this.getNotificationsForUser(authHeader, query)
         if(items === []) {
             response.status = 204
         } else {
-            response.status = 200
             response.body = items.map(notification => ({ 
                 id: notification.id, 
                 post: notification.post, 
@@ -47,28 +33,12 @@ export class NotificationsController {
     }
 
     @HttpDelete
-    @Path("/notifications")
-    public async deleteNotifications({ request, response }: Context) {
-        const userId = (await getUserFromRequest(this.credentialsRepo, request))?.user?.toString()
-        let query = this.notifications.filterAndQuery({ user: userId })
-        if (request.query["inlineComments"] === "true") {
-            let tmp0 = query.inlineReferencedObject<Comment>("comments")
-            query = (request.query["inlineAuthor"] === "true" ? 
-                tmp0.inlineReferencedSubObject<User>("comments", "author") : 
-                tmp0) as unknown as DocumentsArrayQueryBuilder<Notification>
-        }
-        if (request.query["inlinePost"] === "true") {
-            let tmp1 = query.inlineReferencedObject<Post>("post")
-            query = (request.query["inlineAuthor"] === "true" ? 
-                // @ts-ignore
-                tmp1.inlineReferencedSubObject<User>("post", "author") : 
-                tmp1) as unknown as DocumentsArrayQueryBuilder<Notification>
-        }
-        const items = await query.getResult()
+    @DefaultStatusCode(200)
+    public async deleteNotifications(@AuthHeader authHeader: string, @Query query: QueryObj, @Res response: Response) {
+        const items = await this.getNotificationsForUser(authHeader, query)
         if(items === []) {
             response.status = 204
         } else {
-            response.status = 200
             response.body = items.map(notification => ({ 
                 id: notification.id, 
                 post: notification.post, 
@@ -79,5 +49,24 @@ export class NotificationsController {
                 items.map(it => this.notifications.delete(it.id))
             )
         }
+    }
+
+    private async getNotificationsForUser(authHeader: string, requestQuery: QueryObj): Promise<WithId<Notification>[]> {
+        const userId = (await getUserFromRequest(this.credentialsRepo, authHeader))?.user?.toString()
+        let query = this.notifications.filterAndQuery({ user: userId })
+        if (requestQuery["inlineComments"] === "true") {
+            let tmp0 = query.inlineReferencedObject<Comment>("comments")
+            query = (requestQuery["inlineAuthor"] === "true" ? 
+                tmp0.inlineReferencedSubObject<User, "comments">("comments", "author") : 
+                tmp0) as unknown as DocumentsArrayQueryBuilder<Notification>
+        }
+        if (requestQuery["inlinePost"] === "true") {
+            let tmp1 = query.inlineReferencedObject<Post>("post")
+            query = (requestQuery["inlineAuthor"] === "true" ? 
+                // @ts-ignore
+                tmp1.inlineReferencedSubObject<User, "post">("post", "author") : 
+                tmp1) as unknown as DocumentsArrayQueryBuilder<Notification>
+        }
+        return await query.getResult()
     }
 }
