@@ -1,7 +1,7 @@
-import { AuthHeader, Controller, DefaultStatusCode, HttpDelete, HttpGet, Query, Res } from "@peregrine/koa-with-decorators"
+import { Auth, BasicAuth, BearerToken, Controller, DefaultStatusCode, HttpDelete, HttpGet, HttpStatusCodes, Query, Res } from "@peregrine/koa-with-decorators"
 import { DocumentsArrayQueryBuilder, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
 import { Response } from "koa"
-import { getUserFromRequest } from "../data/getUserFromRequest"
+import { verifyAuthentication } from "../data/verifyAuthentication"
 import { Comment } from "../domain/Comment"
 import { LinkedCredentials } from "../domain/Credentials"
 import { Notification } from "../domain/Notification"
@@ -18,41 +18,46 @@ export class NotificationsController {
     ) {}
 
     @HttpGet
-    @DefaultStatusCode(200)
-    public async getNotifications(@AuthHeader authHeader: string, @Query query: QueryObj, @Res response: Response) {
-        const items = await this.getNotificationsForUser(authHeader, query)
-        if(items === []) {
-            response.status = 204
-        } else {
-            response.body = items.map(notification => ({ 
-                id: notification.id, 
-                post: notification.post, 
-                comments: notification.comments 
-            }))
-        }
+    @DefaultStatusCode(HttpStatusCodes.OK)
+    public async getNotifications(
+        @Auth auth: BearerToken | BasicAuth | null,
+        @Query query: QueryObj, 
+        @Res response: Response
+    ) {
+        const items = await this.getNotificationsForUser(auth, query)
+        
+        response.body = items.map(notification => ({ 
+            id: notification.id, 
+            post: notification.post, 
+            comments: notification.comments 
+        }))
     }
 
     @HttpDelete
-    @DefaultStatusCode(200)
-    public async deleteNotifications(@AuthHeader authHeader: string, @Query query: QueryObj, @Res response: Response) {
-        const items = await this.getNotificationsForUser(authHeader, query)
-        if(items === []) {
-            response.status = 204
-        } else {
-            response.body = items.map(notification => ({ 
-                id: notification.id, 
-                post: notification.post, 
-                comments: notification.comments 
-            }))
+    @DefaultStatusCode(HttpStatusCodes.OK)
+    public async deleteNotifications(
+        @Auth auth: BearerToken | BasicAuth | null, 
+        @Query query: QueryObj, 
+        @Res response: Response
+    ) {
+        const items = await this.getNotificationsForUser(auth, query)
+        
+        response.body = items.map(notification => ({ 
+            id: notification.id, 
+            post: notification.post, 
+            comments: notification.comments 
+        }))
 
-            await Promise.all(
-                items.map(it => this.notifications.delete(it.id))
-            )
-        }
+        await Promise.all(
+            items.map(it => this.notifications.delete(it.id))
+        )
     }
 
-    private async getNotificationsForUser(authHeader: string, requestQuery: QueryObj): Promise<WithId<Notification>[]> {
-        const userId = (await getUserFromRequest(this.credentialsRepo, authHeader))?.user?.toString()
+    private async getNotificationsForUser(
+        auth: BearerToken | BasicAuth | null, 
+        requestQuery: QueryObj
+    ): Promise<WithId<Notification>[]> {
+        const userId = (await verifyAuthentication(auth, this.credentialsRepo))?.user?.toString()
         let query = this.notifications.filterAndQuery({ user: userId })
         if (requestQuery["inlineComments"] === "true") {
             let tmp0 = query.inlineReferencedObject<Comment>("comments")

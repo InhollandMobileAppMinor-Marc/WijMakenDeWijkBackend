@@ -1,7 +1,7 @@
-import { AuthHeader, Body, CachedFor, Controller, DefaultStatusCode, HttpGet, HttpPost, ID, Path, Query, Res } from "@peregrine/koa-with-decorators"
+import { Auth, BasicAuth, BearerToken, Body, CachedFor, Controller, DefaultStatusCode, HttpGet, HttpPost, HttpStatusCodes, ID, Path, Query, Res } from "@peregrine/koa-with-decorators"
 import { DocumentQueryBuilder, DocumentsArrayQueryBuilder, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
 import { Response } from "koa"
-import { getUserFromRequest } from "../data/getUserFromRequest"
+import { verifyAuthentication } from "../data/verifyAuthentication"
 import { Comment } from "../domain/Comment"
 import { LinkedCredentials } from "../domain/Credentials"
 import { Notification } from "../domain/Notification"
@@ -19,7 +19,7 @@ export class CommentsController {
 
     @HttpGet
     @Path("/comments/:id")
-    @DefaultStatusCode(200)
+    @DefaultStatusCode(HttpStatusCodes.OK)
     @CachedFor(90, "minutes")
     public async getCommentById(
         @ID id: string, 
@@ -34,7 +34,7 @@ export class CommentsController {
             query = query.inlineReferencedObject<Post>("post") as unknown as DocumentQueryBuilder<Comment>
         const item = await query.getResult()
         if(item === null) {
-            response.status = 404
+            response.status = HttpStatusCodes.NotFound
         } else {
             response.body = item
         }
@@ -42,7 +42,7 @@ export class CommentsController {
 
     @HttpGet
     @Path("/posts/:id/comments")
-    @DefaultStatusCode(200)
+    @DefaultStatusCode(HttpStatusCodes.OK)
     @CachedFor(90, "seconds")
     public async getAllCommentsForPost(
         @ID id: string, 
@@ -53,24 +53,23 @@ export class CommentsController {
         if (inlineAuthor === "true")
             query = query.inlineReferencedObject<User>("author") as unknown as DocumentsArrayQueryBuilder<Comment>
         
-        response.status = 200
         response.body = await query.getResult()
     }
 
     @HttpPost
     @Path("/posts/:id/comments")
-    @DefaultStatusCode(201)
+    @DefaultStatusCode(HttpStatusCodes.Created)
     public async createCommentForPost(
+        @Auth auth: BearerToken | BasicAuth | null,
         @ID postId: string, 
         @Body body: Partial<Comment>,
         @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
-        @AuthHeader authHeader: string,
         @Res response: Response
     ) {
-        body.author = (await getUserFromRequest(this.credentialsRepo, authHeader))?.user?.toString()
+        body.author = (await verifyAuthentication(auth, this.credentialsRepo))?.user?.toString()
         body.post = postId
         if (!Comment.isSerialisedComment(body)) {
-            response.status = 400
+            response.status = HttpStatusCodes.BadRequest
             response.body = {
                 message: "Invalid request body"
             }

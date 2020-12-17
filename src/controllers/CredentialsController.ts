@@ -1,4 +1,4 @@
-import { Body, Controller, DefaultStatusCode, HttpPost, Path, Res } from "@peregrine/koa-with-decorators"
+import { Body, Controller, DefaultStatusCode, HttpPost, HttpStatusCodes, Path, Res } from "@peregrine/koa-with-decorators"
 import { MutableRepository } from "@peregrine/mongo-connect"
 import { Response } from "koa"
 import { getUser } from "../data/getUser"
@@ -16,7 +16,7 @@ export class CredentialsController {
 
     @HttpPost
     @Path("/login")
-    @DefaultStatusCode(200)
+    @DefaultStatusCode(HttpStatusCodes.OK)
     public async login(@Body body: Partial<Credentials>, @Res response: Response) {
         try {
             if(Credentials.areCredentials(body)) {
@@ -29,7 +29,7 @@ export class CredentialsController {
                 throw new Error("Invalid body")
             }
         } catch (error) {
-            response.status = 400
+            response.status = HttpStatusCodes.BadRequest
             response.body = {
                 message: error instanceof Error ? error.message : "Unknown Error"
             }
@@ -38,7 +38,7 @@ export class CredentialsController {
 
     @HttpPost
     @Path("/register")
-    @DefaultStatusCode(200)
+    @DefaultStatusCode(HttpStatusCodes.OK)
     public async register(@Body body: Partial<Credentials & User>, @Res response: Response) {
         try {
             body["role"] = "user"
@@ -70,7 +70,7 @@ export class CredentialsController {
                 throw new Error("Invalid body")
             }
         } catch (error) {
-            response.status = 400
+            response.status = HttpStatusCodes.BadRequest
             response.body = {
                 message: error instanceof Error ? error.message : "Unknown Error"
             }

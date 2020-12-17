@@ -1,4 +1,4 @@
-import { createRouter } from "@peregrine/koa-with-decorators"
+import { BasicAuth, BearerToken, createRouter, HttpStatusCodes } from "@peregrine/koa-with-decorators"
 import dotenv from "dotenv"
 import { MongoDB } from "@peregrine/mongo-connect"
 import Koa, { Context, Next } from "koa"
@@ -8,7 +8,6 @@ import { Post } from "./domain/Post"
 import { promisify } from "./utils/promisify"
 import { User } from "./domain/User"
 import { CredentialsController } from "./controllers/CredentialsController"
-import { getUserFromRequest } from "./data/getUserFromRequest"
 import { Credentials } from "./domain/Credentials"
 import { UsersController } from "./controllers/UsersController"
 import { Comment } from "./domain/Comment"
@@ -17,6 +16,8 @@ import { Notification } from "./domain/Notification"
 import { NotificationsController } from "./controllers/NotificationsController"
 import { StatusController } from "./controllers/StatusController"
 import Router from "@koa/router"
+import { isString } from "./utils/checkType"
+import { verifyAuthentication } from "./data/verifyAuthentication"
 
 async function main() {
     if (process.env.MONGO_URL === undefined) dotenv.config()
@@ -54,9 +55,21 @@ async function main() {
             !request.path.startsWith("/api/v0/status")
         ) {
             try {
-                await getUserFromRequest(credentials, request)
+                const authHeader = request.get("Authorization")
+                if (!isString(authHeader) || authHeader === "")
+                    throw new Error("No Authorization header provided")
+                        
+                let authObj: BearerToken | BasicAuth | null = null
+                        
+                if (authHeader.startsWith("Basic")) {
+                    authObj = new BasicAuth(authHeader.replace("Basic ", ""))
+                } else if (authHeader.startsWith("Bearer")) {
+                    authObj = new BearerToken(authHeader.replace("Bearer ", ""))
+                }
+            
+                await verifyAuthentication(authObj, credentials)
             } catch (error) {
-                response.status = 401
+                response.status = HttpStatusCodes.Unauthorized
                 response.body = {
                     message: error instanceof Error ? error.message : "Unknown Error"
                 }
@@ -100,10 +113,10 @@ async function main() {
             await next()
         } catch (err) {
             console.error(err)
-            ctx.response.status = 500
+            ctx.response.status = HttpStatusCodes.InternalServerError
         }
     
-        const statusCode = ctx.response.status as number | null ?? 404
+        const statusCode = ctx.response.status as number | null ?? HttpStatusCodes.NotFound
         ctx.response.body = ctx.response.body ?? ""
         ctx.response.status = statusCode
     })

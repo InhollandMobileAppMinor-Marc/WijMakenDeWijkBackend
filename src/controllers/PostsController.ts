@@ -1,7 +1,7 @@
-import { AuthHeader, Body, CachedFor, Controller, DefaultStatusCode, HttpGet, HttpPost, ID, Path, Query, Res } from "@peregrine/koa-with-decorators"
+import { Auth, BasicAuth, BearerToken, Body, CachedFor, Controller, DefaultStatusCode, HttpGet, HttpPost, HttpStatusCodes, ID, Path, Query, Res } from "@peregrine/koa-with-decorators"
 import { DocumentQueryBuilder, DocumentsArrayQueryBuilder, Filter, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
 import { Response } from "koa"
-import { getUserFromRequest } from "../data/getUserFromRequest"
+import { verifyAuthentication } from "../data/verifyAuthentication"
 import { Comment } from "../domain/Comment"
 import { LinkedCredentials } from "../domain/Credentials"
 import { Post } from "../domain/Post"
@@ -30,16 +30,16 @@ export class PostsController {
     }
 
     @HttpGet
-    @DefaultStatusCode(200)
+    @DefaultStatusCode(HttpStatusCodes.OK)
     @CachedFor(90, "seconds")
     public async getAllPosts(
-        @AuthHeader authHeader: string,
+        @Auth auth: BearerToken | BasicAuth | null,
         @Query("categories") categoriesQuery: string | undefined, 
         @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
         @Query("inlineComments") inlineComments: "true" | "false" | undefined, 
         @Res response: Response
     ) {
-        const user = await this.usersRepo.getById((await getUserFromRequest(this.credentialsRepo, authHeader)).user)
+        const user = await this.usersRepo.getById((await verifyAuthentication(auth, this.credentialsRepo)).user)
         const categories = (categoriesQuery as string | null | undefined)?.split(",") ?? null
         const filter: Filter<Post> = { location: user?.location }
         if(categories !== null) filter.category = { $in: categories }
@@ -58,7 +58,7 @@ export class PostsController {
 
     @HttpGet
     @Path("/:id")
-    @DefaultStatusCode(200)
+    @DefaultStatusCode(HttpStatusCodes.OK)
     @CachedFor(90, "seconds")
     public async getPostById(
         @ID id: string,
@@ -78,28 +78,28 @@ export class PostsController {
         
         const item = await query.getResult()
         if(item === null) {
-            response.status = 404
+            response.status = HttpStatusCodes.NotFound
         } else {
             response.body = item
         }
     }
 
     @HttpPost
-    @DefaultStatusCode(201)
+    @DefaultStatusCode(HttpStatusCodes.Created)
     public async createPost(
-        @AuthHeader authHeader: string,
+        @Auth auth: BearerToken | BasicAuth | null,
         @Body body: Partial<Post>,
         @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
         @Res response: Response
     ) {
-        const authorId = (await getUserFromRequest(this.credentialsRepo, authHeader))?.user?.toString()
+        const authorId = (await verifyAuthentication(auth, this.credentialsRepo))?.user?.toString()
         const user = await this.usersRepo.getById(authorId)
         body.author = authorId
         body.comments = []
         body.hallway = user?.hallway
         body.location = user?.location
         if (!Post.isSerialisedPost(body)) {
-            response.status = 400
+            response.status = HttpStatusCodes.BadRequest
             response.body = {
                 message: "Invalid request body"
             }
