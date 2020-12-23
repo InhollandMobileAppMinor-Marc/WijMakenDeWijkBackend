@@ -46,6 +46,7 @@ export class SwaggerController {
             }
         }
 
+        response.set("Access-Control-Allow-Origin", "*")
         response.body = swaggerScript
     }
 }
