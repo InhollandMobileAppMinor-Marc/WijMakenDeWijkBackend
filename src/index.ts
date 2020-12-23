@@ -15,6 +15,7 @@ import { CommentsController } from "./controllers/CommentsController"
 import { Notification } from "./domain/Notification"
 import { NotificationsController } from "./controllers/NotificationsController"
 import { StatusController } from "./controllers/StatusController"
+import { SwaggerController } from "./controllers/SwaggerController"
 import Router from "@koa/router"
 import { isString } from "./utils/checkType"
 import { verifyAuthentication } from "./data/verifyAuthentication"
@@ -52,7 +53,8 @@ async function main() {
         if(
             !request.path.startsWith("/api/v0/login") && 
             !request.path.startsWith("/api/v0/register") && 
-            !request.path.startsWith("/api/v0/status")
+            !request.path.startsWith("/api/v0/status") && 
+            !request.path.startsWith("/api/v0/swagger")
         ) {
             try {
                 const authHeader = request.get("Authorization")
@@ -103,6 +105,19 @@ async function main() {
     const notificationsRouter = createRouter(new NotificationsController(credentials, notifications))
     apiVersionZeroRoute.use(notificationsRouter.routes())
     apiVersionZeroRoute.use(notificationsRouter.allowedMethods())
+    
+    const swaggerRouter = createRouter(
+        new SwaggerController(
+            CredentialsController, 
+            StatusController, 
+            UsersController, 
+            PostsController, 
+            CommentsController, 
+            NotificationsController
+        )
+    )
+    apiVersionZeroRoute.use(swaggerRouter.routes())
+    apiVersionZeroRoute.use(swaggerRouter.allowedMethods())
 
     koaApp.use(apiVersionZeroRoute.routes())
     koaApp.use(apiVersionZeroRoute.allowedMethods())
