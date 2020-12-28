@@ -98,6 +98,7 @@ export class PostsController {
         body.comments = []
         body.hallway = user?.hallway
         body.location = user?.location
+        body.deleted = false
         if (!Post.isSerialisedPost(body)) {
             response.status = HttpStatusCodes.BadRequest
             response.body = {
