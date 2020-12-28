@@ -1,4 +1,4 @@
-import { BasicAuth, BearerToken, createRouter, HttpStatusCodes } from "@peregrine/koa-with-decorators"
+import { BasicAuth, BearerToken, attachRoutesToRouter, HttpStatusCodes } from "@peregrine/koa-with-decorators"
 import dotenv from "dotenv"
 import { MongoDB } from "@peregrine/mongo-connect"
 import Koa, { Context, Next } from "koa"
@@ -44,12 +44,6 @@ async function main() {
     
     const koaApp = new Koa()
     koaApp.use(bodyParser())
-
-    const apiPath = "/api/v1"
-
-    const apiVersionZeroRoute = new Router({
-        prefix: apiPath
-    })
 
     // Remove default response body, catch all errors.
     koaApp.use(async (ctx: Context, next: Next) => {
@@ -102,31 +96,43 @@ async function main() {
         return await next()
     })
 
-    const credentialsRouter = createRouter(new CredentialsController(credentials, users))
-    apiVersionZeroRoute.use(credentialsRouter.routes())
-    apiVersionZeroRoute.use(credentialsRouter.allowedMethods())
+    const apiPath = "/api/v1"
 
-    const statusRouter = createRouter(new StatusController(credentials, users))
-    apiVersionZeroRoute.use(statusRouter.routes())
-    apiVersionZeroRoute.use(statusRouter.allowedMethods())
-    
-    const usersRouter = createRouter(new UsersController(credentials, users))
-    apiVersionZeroRoute.use(usersRouter.routes())
-    apiVersionZeroRoute.use(usersRouter.allowedMethods())
-    
-    const postsRouter = createRouter(new PostsController(credentials, users, posts, comments, notifications))
-    apiVersionZeroRoute.use(postsRouter.routes())
-    apiVersionZeroRoute.use(postsRouter.allowedMethods())
-    
-    const commentsRouter = createRouter(new CommentsController(credentials, users, comments, posts, notifications))
-    apiVersionZeroRoute.use(commentsRouter.routes())
-    apiVersionZeroRoute.use(commentsRouter.allowedMethods())
-    
-    const notificationsRouter = createRouter(new NotificationsController(credentials, notifications))
-    apiVersionZeroRoute.use(notificationsRouter.routes())
-    apiVersionZeroRoute.use(notificationsRouter.allowedMethods())
-    
-    const swaggerRouter = createRouter(
+    let apiVersionZeroRoute = new Router({
+        prefix: apiPath
+    })
+
+    apiVersionZeroRoute = attachRoutesToRouter(
+        new CredentialsController(credentials, users), 
+        apiVersionZeroRoute
+    )
+
+    apiVersionZeroRoute = attachRoutesToRouter(
+        new StatusController(credentials, users), 
+        apiVersionZeroRoute
+    )
+
+    apiVersionZeroRoute = attachRoutesToRouter(
+        new UsersController(credentials, users), 
+        apiVersionZeroRoute
+    )
+
+    apiVersionZeroRoute = attachRoutesToRouter(
+        new PostsController(credentials, users, posts, comments, notifications), 
+        apiVersionZeroRoute
+    )
+
+    apiVersionZeroRoute = attachRoutesToRouter(
+        new CommentsController(credentials, users, comments, posts, notifications), 
+        apiVersionZeroRoute
+    )
+
+    apiVersionZeroRoute = attachRoutesToRouter(
+        new NotificationsController(credentials, notifications), 
+        apiVersionZeroRoute
+    )
+
+    apiVersionZeroRoute = attachRoutesToRouter(
         new SwaggerController(
             CredentialsController, 
             StatusController, 
@@ -134,10 +140,8 @@ async function main() {
             PostsController, 
             CommentsController, 
             NotificationsController
-        )
+        ), apiVersionZeroRoute
     )
-    apiVersionZeroRoute.use(swaggerRouter.routes())
-    apiVersionZeroRoute.use(swaggerRouter.allowedMethods())
 
     koaApp.use(apiVersionZeroRoute.routes())
     koaApp.use(apiVersionZeroRoute.allowedMethods())
