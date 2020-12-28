@@ -139,7 +139,8 @@ async function main() {
             UsersController, 
             PostsController, 
             CommentsController, 
-            NotificationsController
+            NotificationsController,
+            SwaggerController
         ), apiVersionZeroRoute
     )
 

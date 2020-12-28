@@ -121,7 +121,7 @@ export class PostsController {
     @HttpDelete
     @Path("/:id")
     @DefaultStatusCode(HttpStatusCodes.NoContent)
-    public async deleteComment(
+    public async deletePost(
         @Auth auth: BearerToken | BasicAuth | null,
         @ID id: string,
         @Res response: Response

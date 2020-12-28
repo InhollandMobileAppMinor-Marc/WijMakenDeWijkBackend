@@ -51,6 +51,7 @@ export class CommentsController {
         @Res response: Response
     ) {
         body.author = (await verifyAuthentication(auth, this.credentialsRepo))?.user?.toString()
+        body.deleted = false
         if (!Comment.isSerialisedComment(body)) {
             response.status = HttpStatusCodes.BadRequest
             response.body = {
@@ -125,30 +126,7 @@ export class CommentsController {
         @Res response: Response
     ) {
         body.post = postId
-        body.author = (await verifyAuthentication(auth, this.credentialsRepo))?.user?.toString()
-        if (!Comment.isSerialisedComment(body)) {
-            response.status = HttpStatusCodes.BadRequest
-            response.body = {
-                message: "Invalid request body"
-            }
-        } else {
-            const comment = Comment.deserialiseComment(body)
-            const createdComment = await this.comments.add(comment)
-            const post = await this.posts.getById(body.post)
-            if (post === null || createdComment === null)
-                throw new Error("Unkown error")
-
-            await Promise.all([
-                this.addCommentToPostDbObject(post, createdComment.id),
-                this.createNotification(post, createdComment)
-            ])
-            
-            let query = this.comments.queryById(createdComment.id)
-            if (inlineAuthor === "true")
-                query = query.inlineReferencedObject<User>("author") as unknown as DocumentQueryBuilder<Comment>
-
-            response.body = await query.getResult()
-        }
+        await this.createComment(auth, body, inlineAuthor, response)
     }
 
     private async addCommentToPostDbObject(post: WithId<Post>, newCommentId: string): Promise<WithId<Post> | null> {
