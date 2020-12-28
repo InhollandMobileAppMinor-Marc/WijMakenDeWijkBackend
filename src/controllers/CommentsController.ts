@@ -1,5 +1,5 @@
 import { Auth, BasicAuth, BearerToken, Body, CachedFor, Controller, DefaultStatusCode, HttpDelete, HttpGet, HttpPost, HttpStatusCodes, ID, Path, Query, Res } from "@peregrine/koa-with-decorators"
-import { DocumentQueryBuilder, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
+import { DocumentQueryBuilder, DocumentsArrayQueryBuilder, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
 import { Response } from "koa"
 import { verifyAuthentication } from "../data/verifyAuthentication"
 import { Comment } from "../domain/Comment"
@@ -8,7 +8,7 @@ import { Notification } from "../domain/Notification"
 import { Post } from "../domain/Post"
 import { User } from "../domain/User"
 
-@Controller("/comments")
+@Controller
 export class CommentsController {
     constructor(
         private readonly credentialsRepo: Repository<LinkedCredentials>,
@@ -19,7 +19,7 @@ export class CommentsController {
     ) {}
 
     @HttpGet
-    @Path("/:id")
+    @Path("/comments/:id")
     @DefaultStatusCode(HttpStatusCodes.OK)
     @CachedFor(90, "minutes")
     public async getCommentById(
@@ -42,6 +42,7 @@ export class CommentsController {
     }
 
     @HttpPost
+    @Path("/comments")
     @DefaultStatusCode(HttpStatusCodes.Created)
     public async createComment(
         @Auth auth: BearerToken | BasicAuth | null,
@@ -76,7 +77,7 @@ export class CommentsController {
     }
 
     @HttpDelete
-    @Path("/:id")
+    @Path("/comments/:id")
     @DefaultStatusCode(HttpStatusCodes.NoContent)
     public async deleteComment(
         @Auth auth: BearerToken | BasicAuth | null,
@@ -93,6 +94,38 @@ export class CommentsController {
         }
 
         await this.comments.patch(id, { deleted: true })
+    }
+
+    // --- Comments on posts ---
+
+    @HttpGet
+    @Path("/posts/:id/comments")
+    @DefaultStatusCode(HttpStatusCodes.OK)
+    @CachedFor(90, "seconds")
+    public async getAllCommentsForPost(
+        @ID id: string, 
+        @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
+        @Res response: Response
+    ) {
+        let query = this.comments.filterAndQuery({ post: id })
+        if (inlineAuthor === "true")
+            query = query.inlineReferencedObject<User>("author") as unknown as DocumentsArrayQueryBuilder<Comment>
+        
+        response.body = await query.getResult()
+    }
+
+    @HttpPost
+    @Path("/posts/:id/comments")
+    @DefaultStatusCode(HttpStatusCodes.Created)
+    public async createCommentForPost(
+        @Auth auth: BearerToken | BasicAuth | null,
+        @ID postId: string, 
+        @Body body: Partial<Comment>,
+        @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
+        @Res response: Response
+    ) {
+        body.post = postId
+        await this.createComment(auth, body, inlineAuthor, response)
     }
 
     private async addCommentToPostDbObject(post: WithId<Post>, newCommentId: string): Promise<WithId<Post> | null> {

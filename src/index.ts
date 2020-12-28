@@ -118,7 +118,7 @@ async function main() {
     )
 
     apiVersionZeroRoute = attachRoutesToRouter(
-        new PostsController(credentials, users, posts, comments, notifications), 
+        new PostsController(credentials, users, posts), 
         apiVersionZeroRoute
     )
 
