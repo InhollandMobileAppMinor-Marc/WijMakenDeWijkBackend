@@ -24,7 +24,7 @@ export class SwaggerController {
             },
             servers: [
                 {
-                    url: "https://wij-maken-de-wijk.herokuapp.com/api/v0/"
+                    url: "https://wij-maken-de-wijk.herokuapp.com/api/v1/"
                 }
             ],
             paths: {},

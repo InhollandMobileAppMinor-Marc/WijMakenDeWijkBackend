@@ -41,7 +41,8 @@ export class CredentialsController {
     @DefaultStatusCode(HttpStatusCodes.OK)
     public async register(@Body body: Partial<Credentials & User>, @Res response: Response) {
         try {
-            body["role"] = "user"
+            body.role = "user"
+            body.deleted = false
             if(Credentials.areCredentials(body) && User.isUser(body)) {
                 const emailExists = await this.credentialsRepo.exists({ email: body.email })
                 if(emailExists)
@@ -52,7 +53,8 @@ export class CredentialsController {
                     role: body.role,
                     houseNumber: body.houseNumber,
                     hallway: body.hallway,
-                    location: body.location
+                    location: body.location,
+                    deleted: body.deleted
                 })
                 if(user === null) 
                     throw new Error("Unknown error")

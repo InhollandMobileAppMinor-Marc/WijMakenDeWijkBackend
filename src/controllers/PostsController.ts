@@ -1,4 +1,4 @@
-import { Auth, BasicAuth, BearerToken, Body, CachedFor, Controller, DefaultStatusCode, HttpGet, HttpPost, HttpStatusCodes, ID, Path, Query, Res } from "@peregrine/koa-with-decorators"
+import { Auth, BasicAuth, BearerToken, Body, CachedFor, Controller, DefaultStatusCode, HttpDelete, HttpGet, HttpPost, HttpStatusCodes, ID, Path, Query, Res } from "@peregrine/koa-with-decorators"
 import { DocumentQueryBuilder, DocumentsArrayQueryBuilder, Filter, MutableRepository, Repository, WithId } from "@peregrine/mongo-connect"
 import { Response } from "koa"
 import { verifyAuthentication } from "../data/verifyAuthentication"
@@ -6,13 +6,17 @@ import { Comment } from "../domain/Comment"
 import { LinkedCredentials } from "../domain/Credentials"
 import { Post } from "../domain/Post"
 import { User } from "../domain/User"
+import { Notification } from "../domain/Notification"
+import { CommentsController } from "./CommentsController"
 
 @Controller("/posts")
 export class PostsController {
     constructor(
         private readonly credentialsRepo: Repository<LinkedCredentials>,
         private readonly usersRepo: Repository<User>,
-        private readonly posts: MutableRepository<Post>
+        private readonly posts: MutableRepository<Post>,
+        private readonly comments: MutableRepository<Comment>,
+        private readonly notifications: MutableRepository<Notification>
     ) {}
 
     protected static getPostPreference(userHallway: string | null, first: WithId<Post>, second: WithId<Post>): number {
@@ -116,5 +120,64 @@ export class PostsController {
 
             response.body = await query.getResult()
         }
+    }
+
+    @HttpDelete
+    @Path("/:id")
+    @DefaultStatusCode(HttpStatusCodes.NoContent)
+    public async deleteComment(
+        @Auth auth: BearerToken | BasicAuth | null,
+        @ID id: string,
+        @Res response: Response
+    ) {
+        const userId = (await verifyAuthentication(auth, this.credentialsRepo))?.user?.toString()
+        const user = await this.usersRepo.getById(userId)
+        const post = await this.posts.getById(id)
+
+        if(post?.author?.toString() !== userId && user?.role !== "admin") {
+            response.status = HttpStatusCodes.Unauthorized
+            return
+        }
+
+        await this.posts.patch(id, { deleted: true })
+    }
+
+    // --- Comments on posts ---
+
+    @HttpGet
+    @Path("/:id/comments")
+    @DefaultStatusCode(HttpStatusCodes.OK)
+    @CachedFor(90, "seconds")
+    public async getAllCommentsForPost(
+        @ID id: string, 
+        @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
+        @Res response: Response
+    ) {
+        let query = this.comments.filterAndQuery({ post: id })
+        if (inlineAuthor === "true")
+            query = query.inlineReferencedObject<User>("author") as unknown as DocumentsArrayQueryBuilder<Comment>
+        
+        response.body = await query.getResult()
+    }
+
+    @HttpPost
+    @Path("/:id/comments")
+    @DefaultStatusCode(HttpStatusCodes.Created)
+    public async createCommentForPost(
+        @Auth auth: BearerToken | BasicAuth | null,
+        @ID postId: string, 
+        @Body body: Partial<Comment>,
+        @Query("inlineAuthor") inlineAuthor: "true" | "false" | undefined, 
+        @Res response: Response
+    ) {
+        body.post = postId
+        const commentsController = new CommentsController(
+            this.credentialsRepo, 
+            this.usersRepo, 
+            this.comments, 
+            this.posts, 
+            this.notifications
+        )
+        await commentsController.createComment(auth, body, inlineAuthor, response)
     }
 }

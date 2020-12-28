@@ -1,4 +1,4 @@
-import { isArray, isObject, isString } from "../utils/checkType"
+import { isArray, isBoolean, isObject, isString } from "../utils/checkType"
 import moment from "moment"
 import { MongoSchema, required, reference } from "@peregrine/mongo-connect"
 
@@ -10,6 +10,7 @@ interface BasePost {
     comments: string[]
     hallway: string
     location: string
+    deleted: boolean
 }
 
 export interface SerialisedPost extends BasePost {
@@ -22,9 +23,10 @@ export interface Post extends BasePost {
 
 export const Post = {
     isSerialisedPost: (post: any): post is SerialisedPost => {
-        return isObject(post) && isString(post.title) && isString(post.body) 
+        return isObject<SerialisedPost>(post) && isString(post.title) && isString(post.body) 
             && isString(post.timestamp) && isString(post.category) && isString(post.author)
             && isArray(post.comments) && isString(post.hallway) && isString(post.location)
+            && isBoolean(post.deleted)
     },
     deserialisePost: (post: SerialisedPost): Post => {
         return {
@@ -35,7 +37,8 @@ export const Post = {
             author: post.author,
             comments: post.comments,
             hallway: post.hallway,
-            location: post.location
+            location: post.location,
+            deleted: post.deleted
         }
     },
     scheme: {
@@ -52,6 +55,10 @@ export const Post = {
         location: {
             ...required(String),
             index: true
+        },
+        deleted: {
+            ...required(Boolean),
+            default: false
         }
     } as MongoSchema<Post>
 }

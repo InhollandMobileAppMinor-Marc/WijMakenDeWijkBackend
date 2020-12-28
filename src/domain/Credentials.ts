@@ -13,8 +13,8 @@ export interface LinkedCredentials extends Credentials {
 
 export const Credentials = {
     areCredentials: (credentials: any): credentials is Credentials => {
-        return isObject(credentials) && isString(credentials.email) && isString(credentials.password)
-            && EMAIL_REGEXP.test(credentials.email)
+        return isObject<Credentials>(credentials) && isString(credentials.email) && 
+            isString(credentials.password) && EMAIL_REGEXP.test(credentials.email)
     },
     scheme: {
         email: {

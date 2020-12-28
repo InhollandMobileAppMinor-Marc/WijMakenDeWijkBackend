@@ -45,16 +45,36 @@ async function main() {
     const koaApp = new Koa()
     koaApp.use(bodyParser())
 
+    const apiPath = "/api/v1"
+
     const apiVersionZeroRoute = new Router({
-        prefix: "/api/v0"
+        prefix: apiPath
     })
 
-    apiVersionZeroRoute.use(async ({ request, response }, next) => {
+    // Remove default response body, catch all errors.
+    koaApp.use(async (ctx: Context, next: Next) => {
+        let nxt: any
+        try {
+            nxt = await next()
+        } catch (err) {
+            console.error(err)
+            ctx.response.status = HttpStatusCodes.InternalServerError
+        }
+    
+        const statusCode = ctx.response.status as number | null ?? HttpStatusCodes.NotFound
+        ctx.response.body = ctx.response.body ?? ""
+        ctx.response.status = statusCode
+        
+        return nxt
+    })
+
+    koaApp.use(async ({ request, response }, next) => {
         if(
-            !request.path.startsWith("/api/v0/login") && 
-            !request.path.startsWith("/api/v0/register") && 
-            !request.path.startsWith("/api/v0/status") && 
-            !request.path.startsWith("/api/v0/swagger")
+            request.path.startsWith(apiPath) && 
+            !request.path.startsWith(`${apiPath}/login`) && 
+            !request.path.startsWith(`${apiPath}/register`) && 
+            !request.path.startsWith(`${apiPath}/status`) && 
+            !request.path.startsWith(`${apiPath}/swagger`)
         ) {
             try {
                 const authHeader = request.get("Authorization")
@@ -90,15 +110,15 @@ async function main() {
     apiVersionZeroRoute.use(statusRouter.routes())
     apiVersionZeroRoute.use(statusRouter.allowedMethods())
     
-    const usersRouter = createRouter(new UsersController(users))
+    const usersRouter = createRouter(new UsersController(credentials, users))
     apiVersionZeroRoute.use(usersRouter.routes())
     apiVersionZeroRoute.use(usersRouter.allowedMethods())
     
-    const postsRouter = createRouter(new PostsController(credentials, users, posts))
+    const postsRouter = createRouter(new PostsController(credentials, users, posts, comments, notifications))
     apiVersionZeroRoute.use(postsRouter.routes())
     apiVersionZeroRoute.use(postsRouter.allowedMethods())
     
-    const commentsRouter = createRouter(new CommentsController(credentials, comments, posts, notifications))
+    const commentsRouter = createRouter(new CommentsController(credentials, users, comments, posts, notifications))
     apiVersionZeroRoute.use(commentsRouter.routes())
     apiVersionZeroRoute.use(commentsRouter.allowedMethods())
     
@@ -121,20 +141,6 @@ async function main() {
 
     koaApp.use(apiVersionZeroRoute.routes())
     koaApp.use(apiVersionZeroRoute.allowedMethods())
-
-    // Remove default response body, catch all errors.
-    koaApp.use(async (ctx: Context, next: Next) => {
-        try {
-            await next()
-        } catch (err) {
-            console.error(err)
-            ctx.response.status = HttpStatusCodes.InternalServerError
-        }
-    
-        const statusCode = ctx.response.status as number | null ?? HttpStatusCodes.NotFound
-        ctx.response.body = ctx.response.body ?? ""
-        ctx.response.status = statusCode
-    })
     
     const port = process.env.PORT ?? 8080
     
