@@ -9,11 +9,11 @@ export async function verifyAuthentication(
     credentials: Repository<LinkedCredentials>
 ): Promise<WithId<LinkedCredentials>> {
     if (auth instanceof BearerToken) {
-        const email = decodeToken(auth.token)
-        if (email === null)
+        const loginId = decodeToken(auth.token)
+        if (loginId === null)
             throw new Error("Token has expired")
 
-        const user = await credentials.firstOrNull({ email })
+        const user = await credentials.getById(loginId)
 
         if (user === null)
             throw new Error("User does not exist")

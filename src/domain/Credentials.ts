@@ -16,6 +16,13 @@ export const Credentials = {
         return isObject<Credentials>(credentials) && isString(credentials.email) && 
             isString(credentials.password) && EMAIL_REGEXP.test(credentials.email)
     },
+    isCredentialsWithEmail: (credentials: any): credentials is Omit<Credentials, "password"> => {
+        return isObject<Credentials>(credentials) && isString(credentials.email) && 
+            EMAIL_REGEXP.test(credentials.email)
+    },
+    isCredentialsWithPassword: (credentials: any): credentials is Omit<Credentials, "email"> => {
+        return isObject<Credentials>(credentials) && isString(credentials.password)
+    },
     scheme: {
         email: {
             ...required(String),
