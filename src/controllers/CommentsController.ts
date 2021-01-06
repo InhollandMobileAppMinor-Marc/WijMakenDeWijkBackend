@@ -97,6 +97,11 @@ export class CommentsController {
         await this.comments.patch(id, { deleted: true })
     }
 
+    @HttpPost
+    @Path("/comments/:id/reports")
+    @DefaultStatusCode(HttpStatusCodes.Created)
+    public async addReportToComment() {}
+
     // --- Comments on posts ---
 
     @HttpGet

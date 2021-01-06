@@ -53,7 +53,8 @@ export class PostsController {
         if (inlineAuthor === "true")
             query = query.inlineReferencedObject<User>("author") as unknown as DocumentsArrayQueryBuilder<Post>
 
-        response.body = (await query.getResult()).sort((first, second) => PostsController.getPostPreference(user?.hallway ?? null, first, second))
+        response.body = (await query.getResult())
+            .sort((first, second) => PostsController.getPostPreference(user?.hallway ?? null, first, second))
     }
 
     @HttpGet
@@ -83,6 +84,11 @@ export class PostsController {
             response.body = item
         }
     }
+
+    @HttpPost
+    @Path("/:id/reports")
+    @DefaultStatusCode(HttpStatusCodes.Created)
+    public async addReportToPost() {}
 
     @HttpPost
     @DefaultStatusCode(HttpStatusCodes.Created)
