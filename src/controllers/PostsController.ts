@@ -91,6 +91,11 @@ export class PostsController {
     public async addReportToPost() {}
 
     @HttpPost
+    @Path("/:id/votes")
+    @DefaultStatusCode(HttpStatusCodes.Created)
+    public async addVoteToPost() {}
+
+    @HttpPost
     @DefaultStatusCode(HttpStatusCodes.Created)
     public async createPost(
         @Auth auth: BearerToken | BasicAuth | null,
