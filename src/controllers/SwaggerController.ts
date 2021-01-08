@@ -34,6 +34,7 @@ export class SwaggerController {
         }
 
         for (const endpoint of this.endpoints) {
+            // Note that this function generates an incomplete swagger script
             const { paths, components } = getOpenApiPathsJson(endpoint)
             for(const path in paths) {
                 swaggerScript.paths[path] = paths[path]
@@ -46,6 +47,7 @@ export class SwaggerController {
             }
         }
 
+        // Allow loading this script directly into an externally hosted Swagger UI
         response.set("Access-Control-Allow-Origin", "*")
         response.body = swaggerScript
     }

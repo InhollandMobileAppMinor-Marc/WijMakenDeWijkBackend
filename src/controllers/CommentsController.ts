@@ -100,7 +100,9 @@ export class CommentsController {
     @HttpPost
     @Path("/comments/:id/reports")
     @DefaultStatusCode(HttpStatusCodes.Created)
-    public async addReportToComment() {}
+    public async addReportToComment() {
+        // TODO: Register report
+    }
 
     // --- Comments on posts ---
 

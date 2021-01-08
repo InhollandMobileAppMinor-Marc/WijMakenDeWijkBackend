@@ -13,6 +13,8 @@ export async function verifyAuthentication(
         if (loginId === null)
             throw new Error("Token has expired")
 
+        // TODO: Users should be able to revoke insecure tokens
+
         const user = await credentials.getById(loginId)
 
         if (user === null)

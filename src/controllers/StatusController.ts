@@ -12,6 +12,11 @@ export class StatusController {
         private readonly usersRepo: Repository<User>
     ) {}
 
+    /**
+     * Returns the current login status for this user
+     * @param auth Bearer, basic or no authentication
+     * @param response The response builder
+     */
     @HttpGet
     @DefaultStatusCode(HttpStatusCodes.OK)
     public async getStatus(@Auth auth: BearerToken | BasicAuth | null, @Res response: Response) {

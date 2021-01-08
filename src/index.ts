@@ -3,6 +3,7 @@ import dotenv from "dotenv"
 import { MongoDB } from "@peregrine/mongo-connect"
 import Koa, { Context, Next } from "koa"
 import bodyParser from "koa-bodyparser"
+import helmet from "koa-helmet"
 import { PostsController } from "./controllers/PostsController"
 import { Post } from "./domain/Post"
 import { promisify } from "./utils/promisify"
@@ -43,7 +44,10 @@ async function main() {
     const credentials = db.getMutableRepository("credentials", Credentials.scheme, mongoErrorHandler)
     
     const koaApp = new Koa()
+    // Parses body to json
     koaApp.use(bodyParser())
+    // Security configuration
+    koaApp.use(helmet())
 
     // Remove default response body, catch all errors.
     koaApp.use(async (ctx: Context, next: Next) => {
@@ -62,6 +66,7 @@ async function main() {
         return nxt
     })
 
+    // Restrict access for requests without authentication to API for most routes
     koaApp.use(async ({ request, response }, next) => {
         if(
             request.path.startsWith(apiPath) && 
@@ -76,7 +81,12 @@ async function main() {
                     throw new Error("No Authorization header provided")
                         
                 let authObj: BearerToken | BasicAuth | null = null
-                        
+                
+                /** 
+                 * It is recommended to use a Bearer token here.
+                 * Use Basic with email/password only when changing credentials themselves, 
+                 * since this requires users to give their current email and password for verification.
+                 */
                 if (authHeader.startsWith("Basic")) {
                     authObj = new BasicAuth(authHeader.replace("Basic ", ""))
                 } else if (authHeader.startsWith("Bearer")) {
@@ -132,6 +142,7 @@ async function main() {
         apiVersionZeroRoute
     )
 
+    // Note: Generated swagger script is incomplete
     apiVersionZeroRoute = attachRoutesToRouter(
         new SwaggerController(
             CredentialsController, 

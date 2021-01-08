@@ -19,6 +19,7 @@ export class CredentialsController {
     @Path("/login")
     @DefaultStatusCode(HttpStatusCodes.OK)
     public async login(@Body body: Partial<Credentials>, @Res response: Response) {
+        // TODO: Use short-lived tokens and long-lived refresh tokens
         try {
             if(Credentials.areCredentials(body)) {
                 const user = await getUser(this.credentialsRepo, body.email, body.password)
@@ -43,6 +44,7 @@ export class CredentialsController {
     @DefaultStatusCode(HttpStatusCodes.OK)
     public async register(@Body body: Partial<Credentials & User>, @Res response: Response) {
         try {
+            // TODO: Allow registered admins to create new admins
             body.role = "user"
             body.deleted = false
             if(Credentials.areCredentials(body) && User.isUser(body)) {

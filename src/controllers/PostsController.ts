@@ -15,6 +15,16 @@ export class PostsController {
         private readonly posts: MutableRepository<Post>
     ) {}
 
+    /**
+     * Returns a score for sorting posts. Will sort posts like this:
+     * 1. New posts from the hallway the current user is in
+     * 2. Older posts from the hallway the current user is in, OR  
+     *    New posts from other hallways
+     * 3. Older posts from other hallways
+     * @param userHallway The hallway the current user is in
+     * @param first The first post
+     * @param second The second post
+     */
     protected static getPostPreference(userHallway: string | null, first: WithId<Post>, second: WithId<Post>): number {
         const differenceInHours = Math.round((first.timestamp.getTime() - second.timestamp.getTime()) / 1000 / 60 / 60)
         if(userHallway === null) return differenceInHours
@@ -88,12 +98,16 @@ export class PostsController {
     @HttpPost
     @Path("/:id/reports")
     @DefaultStatusCode(HttpStatusCodes.Created)
-    public async addReportToPost() {}
+    public async addReportToPost() {
+        // TODO: Register report
+    }
 
     @HttpPost
     @Path("/:id/votes")
     @DefaultStatusCode(HttpStatusCodes.Created)
-    public async addVoteToPost() {}
+    public async addVoteToPost() {
+        // TODO: Register vote
+    }
 
     @HttpPost
     @DefaultStatusCode(HttpStatusCodes.Created)
