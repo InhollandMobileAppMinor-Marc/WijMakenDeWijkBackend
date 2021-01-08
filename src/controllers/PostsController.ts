@@ -28,14 +28,16 @@ export class PostsController {
     protected static getPostPreference(userHallway: string | null, first: WithId<Post>, second: WithId<Post>): number {
         const differenceInHours = Math.round((first.timestamp.getTime() - second.timestamp.getTime()) / 1000 / 60 / 60)
         if(userHallway === null) return differenceInHours
-        // Award additional points if the post was made in the same hallway
+        // Award additional points if the post was made in the same hallway OR if the hallway is *
+        const awardHallwayPointsForFirst = first.hallway === userHallway || first.hallway === "*"
+        const awardHallwayPointsForSecond = second.hallway === userHallway || second.hallway === "*"
         const thresholdInHours = 36
-        const scoreForFirst = (differenceInHours > 0 ? differenceInHours : 0) + (first.hallway === userHallway ? thresholdInHours : 0)
-        const scoreForSecond = (differenceInHours < 0 ? differenceInHours * -1 : 0) + (second.hallway === userHallway ? thresholdInHours : 0)
+        const scoreForFirst = (differenceInHours > 0 ? differenceInHours : 0) + (awardHallwayPointsForFirst ? thresholdInHours : 0)
+        const scoreForSecond = (differenceInHours < 0 ? differenceInHours * -1 : 0) + (awardHallwayPointsForSecond ? thresholdInHours : 0)
         // Preference if score is the same
         const hallwayBasedPreference = 
-            first.hallway === userHallway && second.hallway !== userHallway ? -1 : 
-            second.hallway === userHallway && first.hallway !== userHallway ? 1 : 0
+            awardHallwayPointsForFirst && !awardHallwayPointsForSecond ? -1 : 
+            !awardHallwayPointsForFirst && awardHallwayPointsForSecond ? 1 : 0
         return scoreForFirst === scoreForSecond ? hallwayBasedPreference : scoreForSecond - scoreForFirst
     }
 
