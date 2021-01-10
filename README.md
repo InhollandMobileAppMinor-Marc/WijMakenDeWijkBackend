@@ -10,3 +10,7 @@
     - Insert a variable `SECRET_KEY` with a secret key for tokens.
 4. Deployment (local: `node .` or `npm start`)
 
+## Admin accounts
+Since admin accounts currently can't be created by the API, take these steps to create one:
+1. Create a regular account first
+2. Set `role` to `admin` in the database. This can be done using MongoDB Compass.
